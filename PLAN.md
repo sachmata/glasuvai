@@ -16,7 +16,7 @@
 | Ballot secrecy | Homomorphic encryption — votes never decrypted individually; token derivation includes voter-held secret preventing brute-force deanonymization |
 | Coercion resistance | Online re-voting + in-person paper ballot override (Estonian model) |
 | Transparency | 100% open source, reproducible builds, runtime attestation |
-| Simplicity | Minimal moving parts; Go + Rust + TypeScript; no blockchain |
+| Simplicity | Minimal moving parts; Rust + TypeScript; no blockchain. One crypto implementation shared between server and client (via WASM). |
 | Sovereignty | All infrastructure on Bulgarian state systems; no foreign CDN |
 | Accessibility | WCAG 2.1 AA, multilingual (BG/TR/EN), assisted voting support |
 | Graceful degradation | Every failure mode documented; paper voting always available as fallback |
@@ -192,7 +192,7 @@ This encoding supports homomorphic tallying without ever decrypting individual b
 ### 3.3 Ballot Size Estimation
 For a typical MIR with ~20 parties and max ~30 candidates per list:
 - Matrix: 20 × 31 = 620 ElGamal ciphertexts
-- Each ciphertext (Curve25519): ~64 bytes
+- Each ciphertext (P-256): ~64 bytes
 - ZKP: ~equal size to ciphertexts
 - Total ballot: ~80 KB
 This is large but manageable. Optimization: only include rows for parties that actually have candidates in this MIR, and only up to the actual list length per party. Typical ballot would be ~20-40 KB.
@@ -644,58 +644,58 @@ The voting server and bulletin board run in Confidential Computing enclaves (AMD
 │                    glasuvai MONOREPO                       │
 │                                                           │
 │  /packages                                                │
-│  ├── /crypto          (Go)    Core cryptographic library  │
-│  │   ├── elgamal.go           Exponential ElGamal         │
-│  │   ├── zkp.go               Chaum-Pedersen proofs       │
-│  │   ├── threshold.go         Pedersen DKG + threshold    │
-│  │   ├── blind_sig.go         RSA blind signatures        │
-│  │   └── ballot.go            Ballot encode/encrypt       │
-│  │                                                        │
-│  ├── /crypto-wasm     (Rust→WASM) Client-side crypto      │
-│  │   ├── src/elgamal.rs       ElGamal on Ristretto255     │
+│  ├── /crypto          (Rust, #[no_std]-compatible)        │
+│  │   ├── src/point.rs         P-256 point operations      │
+│  │   ├── src/scalar.rs        Scalar arithmetic mod N     │
+│  │   ├── src/field.rs         Prime field Fp arithmetic   │
+│  │   ├── src/elgamal.rs       Exponential ElGamal         │
 │  │   ├── src/zkp.rs           Chaum-Pedersen proofs       │
-│  │   ├── src/blind_sig.rs     RSA blind signature client  │
-│  │   ├── src/ballot.rs        Ballot encode/encrypt       │
-│  │   └── Cargo.toml           curve25519-dalek dep only   │
-│  │   Output: ~200-500 KB .wasm (vs 10-20 MB Go→WASM)     │
-│  │   Properties: constant-time ops preserved in WASM,     │
-│  │   audited curve25519-dalek/ristretto255 crate          │
+│  │   ├── src/threshold.rs     Pedersen DKG + threshold    │
+│  │   ├── src/blind.rs         RSA blind signatures        │
+│  │   ├── src/ballot/          Ballot encode/encrypt       │
+│  │   └── Cargo.toml           ZERO external crates        │
+│  │   Compiles to both native and WASM. One codebase for   │
+│  │   all crypto — server and client use identical code.   │
 │  │                                                        │
-│  ├── /identity-provider (Go)  Authentication service      │
-│  │   ├── cert_auth.go         QES certificate validation  │
-│  │   ├── code_auth.go         Offline code validation     │
-│  │   ├── blind_sign.go        Token blind signing         │
-│  │   └── voter_roll.go        ГРАО voter roll lookup      │
+│  ├── /crypto-wasm     (Rust→WASM) Thin WASM wrapper       │
+│  │   ├── src/lib.rs           wasm-bindgen JS glue        │
+│  │   └── Cargo.toml           depends on crypto + wasm-   │
+│  │   Output: ~200-500 KB .wasm                            │
+│  │   Only dep: wasm-bindgen (JS interop, not crypto)      │
 │  │                                                        │
-│  ├── /voting-server   (Go)    Ballot acceptance service   │
-│  │   ├── submit.go            Accept + validate ballots   │
-│  │   ├── revote.go            Handle re-vote replacement  │
-│  │   └── publish.go           Push to bulletin board      │
+│  ├── /identity-provider (Rust) Authentication service     │
+│  │   ├── src/auth.rs          Code + cert authentication  │
+│  │   ├── src/token.rs         Blind signature issuance    │
+│  │   ├── src/voter.rs         ГРАО voter roll lookup      │
+│  │   └── src/api.rs           HTTP handlers (axum)        │
 │  │                                                        │
-│  ├── /bulletin-board  (Go)    Append-only public ledger   │
-│  │   ├── chain.go             Hash-chain management       │
-│  │   ├── mirror.go            Mirror sync protocol        │
-│  │   ├── api.go               Public read API             │
-│  │   └── store.go             Storage (PostgreSQL/flat)   │
+│  ├── /voting-server   (Rust)  Ballot acceptance service   │
+│  │   ├── src/submit.rs        Accept + validate ballots   │
+│  │   ├── src/revote.rs        Handle re-vote replacement  │
+│  │   └── src/publish.rs       Push to bulletin board      │
 │  │                                                        │
-│  ├── /tally           (Go)    Tallying service             │
-│  │   ├── aggregate.go         Homomorphic aggregation     │
-│  │   ├── decrypt.go           Threshold decryption        │
-│  │   ├── hare.go              Hare-Niemeyer allocation    │
-│  │   ├── preference.go        Preference threshold check  │
-│  │   └── report.go            Results report generation   │
+│  ├── /bulletin-board  (Rust)  Append-only public ledger   │
+│  │   ├── src/chain.rs         Hash-chain management       │
+│  │   ├── src/merkle.rs        Merkle tree                 │
+│  │   ├── src/api.rs           Public read API (axum)      │
+│  │   └── src/store.rs         Storage (rusqlite)          │
 │  │                                                        │
-│  ├── /verifier        (Go)    Independent verifier tool   │
-│  │   ├── verify_zkps.go       Check all ballot ZKPs       │
-│  │   ├── verify_chain.go      Check BB hash chain         │
-│  │   ├── verify_tally.go      Check homomorphic product   │
-│  │   ├── verify_decrypt.go    Check decryption proofs     │
-│  │   └── main.go              CLI: "verify full election" │
+│  ├── /tally           (Rust)  Tallying CLI tool            │
+│  │   ├── src/aggregate.rs     Homomorphic aggregation     │
+│  │   ├── src/decrypt.rs       Threshold decryption        │
+│  │   ├── src/hare.rs          Hare-Niemeyer allocation    │
+│  │   ├── src/preference.rs    Preference threshold check  │
+│  │   └── src/report.rs        Results report generation   │
 │  │                                                        │
-│  ├── /trustee-tool    (Go)    Key ceremony + decryption   │
-│  │   ├── keygen.go            DKG participation           │
-│  │   ├── decrypt.go           Partial decryption          │
-│  │   └── main.go              CLI for trustees            │
+│  ├── /verifier        (Rust)  Independent verifier tool   │
+│  │   ├── src/checks/          All 10 verification checks  │
+│  │   ├── src/pipeline.rs      Verification orchestrator   │
+│  │   └── src/main.rs          CLI: "verify full election" │
+│  │                                                        │
+│  ├── /trustee-tool    (Rust)  Key ceremony + decryption   │
+│  │   ├── src/keygen.rs        DKG participation           │
+│  │   ├── src/decrypt.rs       Partial decryption          │
+│  │   └── src/main.rs          CLI for trustees            │
 │  │                                                        │
 │  ├── /web-client      (TypeScript + React)                │
 │  │   ├── /components                                      │
@@ -712,10 +712,10 @@ The voting server and bulletin board run in Confidential Computing enclaves (AMD
 │  ├── /mobile-client   (TypeScript + React Native)         │
 │  │   └── (mirrors web-client structure)                   │
 │  │                                                        │
-│  └── /admin           (TypeScript)                        │
-│      ├── election_setup.ts    Configure election params   │
-│      ├── voter_roll.ts        Import voter roll           │
-│      └── code_gen.ts          Generate identity codes     │
+│  └── /admin           (Rust)  Election setup tools        │
+│      ├── src/election_setup.rs Configure election params  │
+│      ├── src/voter_roll.rs     Import voter roll          │
+│      └── src/code_gen.rs       Generate identity codes    │
 │                                                           │
 │  /nix                 Reproducible build definitions       │
 │  /docs                Protocol specification               │
@@ -727,20 +727,30 @@ The voting server and bulletin board run in Confidential Computing enclaves (AMD
 
 | Component | Technology | Rationale |
 |---|---|---|
-| Server crypto library | Go crypto/elliptic + math/big | Go's standard lib is auditable; no external crypto deps |
-| Client crypto library | Rust (curve25519-dalek) → WASM | ~200-500 KB binary, constant-time preserved in WASM, audited crate. Go→WASM produces 10-20 MB and loses constant-time guarantees. |
-| Elliptic curve | Curve25519 / Ristretto255 | Well-studied, fast, avoids cofactor issues |
-| Browser crypto | Rust→WASM | Purpose-built for WASM target with side-channel awareness. Two codebases (Go server + Rust client) require cross-testing with shared test vectors. |
-| Web client | TypeScript + React | Broad ecosystem, easy for auditors to read |
+| Crypto library | Rust `#[no_std]` crate, P-256 from first principles | One implementation for both server and client. Zero external crypto crates. Every operation traceable to textbook definitions. |
+| Elliptic curve | P-256 (NIST secp256r1) | Well-studied, government-approved standard. Implemented from first principles in Rust. |
+| Browser crypto | Rust→WASM (via `wasm-bindgen`) | ~200-500 KB binary. Same crypto crate compiled to WASM — guaranteed identical behavior to server. |
+| Server framework | Rust + `axum` | Lightweight, well-audited async HTTP. Comparable simplicity to Go `net/http`. |
+| BB storage | SQLite via `rusqlite` | Embedded, zero-config, sufficient for demo. |
+| Web client | TypeScript + React (Vite) | Thin UI shell; all crypto in Rust→WASM |
 | Mobile client | React Native (TypeScript) | Shared logic with web client |
-| Server framework | Go net/http (stdlib) | Zero dependencies = smaller audit surface |
-| BB storage | PostgreSQL + flat file export | Reliable, exportable, no vendor lock |
-| Build system | Nix | Reproducible builds, deterministic outputs |
+| Build system | Nix + Cargo + `wasm-pack` | Reproducible builds, deterministic outputs |
 | CI/CD | GitHub Actions | Public, auditable pipeline |
 
 ### 8.3 Dependency Policy
-Absolute minimum external dependencies. The Go server crypto core uses ONLY the standard library. No go.uber.org, no github.com/xxx for anything in the critical path. The Rust client crypto uses ONLY curve25519-dalek (and its transitive deps: subtle, zeroize) — a widely audited, WASM-tested crate maintained by the Ristretto group. The web client uses React (audited by millions) and nothing else in the crypto path — the WASM module handles all cryptography.
-Cross-codebase consistency: Since server (Go) and client (Rust) implement the same cryptographic operations independently, a comprehensive shared test vector suite is mandatory. Test vectors are generated from the Go implementation and verified against the Rust implementation (and vice versa) in CI. Any divergence fails the build.
+
+**Two-tier rule**: absolute zero external crates on the crypto path; minimal, well-audited crates for non-crypto server plumbing.
+
+| Tier | Scope | External crates allowed |
+|---|---|---|
+| **Crypto path** (security-critical) | `packages/crypto` — ElGamal, ZKPs, DKG, blind sigs, ballot encoding | **ZERO**. Only `core`/`alloc`/`std`. P-256 field arithmetic, scalar arithmetic, point operations — all from first principles. `#[no_std]`-compatible. |
+| **Server plumbing** (not security-critical) | HTTP handlers, JSON serialization, SQLite storage, async runtime | `axum`, `tokio`, `serde`/`serde_json`, `rusqlite`. Each is mature, widely audited, and replaceable. |
+| **WASM bridge** | `packages/crypto-wasm` — JS interop only | `wasm-bindgen` (for JS glue). No crypto logic in this layer. |
+| **Web client** | UI only | React (via npm). All crypto delegated to WASM module. |
+
+**Why this is stricter than the original Go plan**: Go's `crypto/elliptic` and `math/big` are stdlib but still external code trusted implicitly. In the Rust version, the crypto path trusts **no code outside this repository** — P-256 is implemented from scratch.
+
+**Single implementation advantage**: Since server and client share the same Rust crypto crate, there are no cross-language consistency issues. No shared test vectors needed for sync — `cargo test` covers everything. One bug fix applies everywhere.
 ---
 
 ## 9. VOTER EXPERIENCE FLOW
@@ -1010,9 +1020,9 @@ The Bulgarian Electoral Code (Изборен кодекс) must be amended to:
 |---|---|---|
 | Phase 0: Legal workstream | Months 1-18 (parallel) | Electoral Code amendments drafted, parliamentary review, Constitutional Court consultation, GDPR DPIA, КЗЛД approval |
 | Phase 1: Protocol spec | Months 1-3 | Formal cryptographic protocol document, threat model, external academic review |
-| Phase 2: Crypto core | Months 3-7 | Go server crypto library + Rust WASM client crypto library, comprehensive shared test vector suite, cross-implementation verification, formal verification of critical proofs |
-| Phase 3: Backend services | Months 7-11 | Identity Provider, Voting Server, Bulletin Board, Tally service, in-person override protocol |
-| Phase 4: Client apps | Months 11-14 | Web client (React + Rust WASM), Mobile client (React Native), Trustee CLI tool, accessibility compliance (WCAG 2.1 AA) |
+| Phase 2: Crypto core | Months 3-7 | Rust crypto crate (`#[no_std]`, P-256 from first principles), compiles to both native and WASM, comprehensive test suite, formal verification of critical proofs |
+| Phase 3: Backend services | Months 7-11 | Identity Provider, Voting Server, Bulletin Board, Tally service (all Rust + axum), in-person override protocol |
+| Phase 4: Client apps | Months 11-14 | Web client (React + Rust→WASM from shared crypto crate), Mobile client (React Native), Trustee CLI tool (Rust), accessibility compliance (WCAG 2.1 AA) |
 | Phase 5: Verifier & tools | Months 14-16 | Independent verifier, BB mirror software, admin tools, diaspora edge infrastructure |
 | Phase 6: Security audit | Months 16-22 | External audit by 2+ independent firms (minimum 4 months active audit), public bug bounty (ongoing), penetration testing, formal verification review |
 | Phase 7: Public trust campaign | Months 20-24 | Public education campaign, technical documentation in Bulgarian, demonstration events, media briefings, open-source community engagement |
@@ -1094,7 +1104,7 @@ The web client must meet WCAG 2.1 Level AA as a minimum:
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Encryption | Exponential ElGamal on Ristretto255 | Additively homomorphic, well-studied, fast |
+| Encryption | Exponential ElGamal on P-256 | Additively homomorphic, well-studied, government-approved curve |
 | Tallying | Homomorphic (not mix-net) | Simpler, sufficient for party-list + preference |
 | Verifiability | Benaloh challenge + receipt hash + public BB | Full E2E verifiability |
 | Coercion resistance | Re-voting + in-person override | Re-voting for online correction; paper ballot at polling station cancels online vote (Estonian model). Strongest practical measure for Bulgaria's vote-buying context. |
@@ -1103,7 +1113,7 @@ The web client must meet WCAG 2.1 Level AA as a minimum:
 | Trust model | 5-of-9 multi-stakeholder threshold | No single faction controls decryption |
 | Bulletin board | Hash-chained log + Merkle tree + mirrors | Hash chain for append-only integrity; Merkle tree for efficient inclusion proofs; mirrors for decentralized verification |
 | Build verification | Nix reproducible builds + runtime hash | Any voter can verify code integrity |
-| Client crypto | Rust→WASM (curve25519-dalek) | ~500 KB binary, constant-time preserved, audited crate. Server uses Go (stdlib only). Cross-tested with shared test vectors. |
+| Client crypto | Rust→WASM (from shared `packages/crypto` crate) | ~500 KB binary. Same code as server — one implementation, no cross-language sync needed. Crypto crate is `#[no_std]`, zero external crates. |
 | Hosting | Bulgarian sovereign infrastructure | No foreign entity in the critical path. State data centers + EU PoPs for diaspora. |
 | Seat allocation | Hare-Niemeyer + 7% preference threshold | Matches Bulgarian Electoral Code |
 | Legal framework | Electoral Code amendments + Constitutional Court review | Online voting requires explicit legal authorization and constitutional compatibility ruling |
@@ -1111,4 +1121,4 @@ The web client must meet WCAG 2.1 Level AA as a minimum:
 | Fallback | Graceful degradation to paper voting | Every failure mode has a defined response; paper voting is always available as override |
 | Timeline | 36 months with two pilot rounds | Non-binding parallel pilot → binding small-scale pilot → national deployment |
 ---
-Do you want me to proceed with implementation? If so, I'd suggest starting with the crypto core library (/packages/crypto) since everything else depends on it. Or if you'd like to refine any part of this architecture first — the identity code distribution, the ballot encoding, the re-voting mechanism, or anything else — let me know.
+Do you want me to proceed with implementation? If so, I'd suggest starting with the crypto core library (/packages/crypto) since everything else depends on it. The Rust crypto crate is `#[no_std]`-compatible and shared between all server components and the WASM client. Or if you'd like to refine any part of this architecture first — the identity code distribution, the ballot encoding, the re-voting mechanism, or anything else — let me know.
