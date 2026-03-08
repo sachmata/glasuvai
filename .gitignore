@@ -1,0 +1,61 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+/bin/
+/dist/
+
+# Go
+packages/crypto/vendor/
+packages/identity-provider/vendor/
+packages/voting-server/vendor/
+packages/bulletin-board/vendor/
+packages/tally/vendor/
+packages/verifier/vendor/
+packages/trustee-tool/vendor/
+
+# Rust / WASM
+packages/crypto-wasm/target/
+packages/crypto-wasm/pkg/
+*.wasm
+
+# Node / TypeScript
+node_modules/
+packages/web-client/dist/
+packages/web-client/build/
+packages/mobile-client/dist/
+packages/admin/dist/
+.next/
+.turbo/
+
+# Nix
+/result
+/result-*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Test artifacts
+coverage/
+*.test.log
+
+# Build artifacts
+*.tar.gz
+*.zip
