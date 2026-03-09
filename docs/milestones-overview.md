@@ -45,7 +45,7 @@ M1: Foundation ──────┐
 
 | # | Name | Packages | Est. Effort | Key Deliverable |
 |---|---|---|---|---|
-| M1 | Foundation & Election Data | `/packages/crypto` | 1 week | Rust workspace, Bulgarian election types, real 51st NA ballot data, test infrastructure |
+| M1 | Foundation & Election Data | `/packages/crypto` | 1 week | Reproducible build infrastructure (Nix flake, pinned Rust toolchain), Rust workspace, Bulgarian election types, real 51st NA ballot data, test infrastructure |
 | M2 | Cryptographic Primitives | `/packages/crypto` | 2–3 weeks | ElGamal, Chaum-Pedersen ZKPs, Pedersen DKG, RSA blind signatures — all from first principles, `#[no_std]`-compatible, zero external crates |
 | M3 | Ballot Encoding & Encryption | `/packages/crypto` | 1–2 weeks | Ballot matrix encryption, disjunctive ZKP (exactly-one-of-N), Benaloh challenge, receipt hash |
 | M4 | Bulletin Board | `/packages/bulletin-board` | 1–2 weeks | Append-only hash chain, Merkle tree, REST API (axum), mirror sync, SQLite storage (rusqlite) |
@@ -82,7 +82,7 @@ Every step produces cryptographic proof. Anyone can run the verifier and confirm
 | Server framework | Rust + `axum` | Lightweight, well-audited async HTTP. Comparable to Go `net/http` in simplicity. |
 | Storage | SQLite via `rusqlite` | Embedded, zero-config, sufficient for demo |
 | Web client | TypeScript + React (Vite) | Thin UI shell; all crypto in Rust→WASM |
-| Build | Cargo + `wasm-pack` + `make` | Simple, reproducible |
+| Build | Nix flake + Cargo + `wasm-pack` | Reproducible builds — `flake.lock` pins all inputs (nixpkgs 24.11 LTS, Rust 1.85.0, Node.js 22 LTS); `rust-toolchain.toml` pins compiler; `Cargo.lock` pins crate versions. Anyone building from same commit gets identical binary hash. |
 
 ## File Naming Convention
 

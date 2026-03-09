@@ -21,24 +21,48 @@ for Bulgarian parliamentary elections. Core properties:
 ## Repository Structure
 
 ```
+rust-toolchain.toml      Pins Rust 1.85.0 + WASM target
+flake.nix                Nix flake — pins all build inputs
+flake.lock               Exact commit hashes for all Nix inputs
+.cargo/config.toml       Cargo workspace settings
+Cargo.toml               Workspace root
+Cargo.lock               Pinned Cargo dependency versions
+
 packages/
-  crypto/                Go — core cryptographic library
-  crypto-wasm/           Rust → WASM — client-side crypto
-  identity-provider/     Go — authentication + blind signatures
-  voting-server/         Go — ballot acceptance
-  bulletin-board/        Go — append-only public ledger
-  tally/                 Go — homomorphic aggregation + threshold decryption
-  verifier/              Go — independent election verification CLI
-  trustee-tool/          Go — key ceremony + partial decryption CLI
+  crypto/                Rust #[no_std] — core cryptographic library
+  crypto-wasm/           Rust → WASM — client-side crypto bridge
+  identity-provider/     Rust — authentication + blind signatures
+  voting-server/         Rust — ballot acceptance
+  bulletin-board/        Rust — append-only public ledger
+  tally/                 Rust — homomorphic aggregation + threshold decryption
+  verifier/              Rust — independent election verification CLI
+  trustee-tool/          Rust — key ceremony + partial decryption CLI
   web-client/            TypeScript + React — voter UI
   mobile-client/         React Native — mobile voter UI
-  admin/                 TypeScript — election setup tools
-nix/                     Reproducible build definitions
+  admin/                 Rust — election setup tools
+nix/                     Additional Nix build definitions
 docs/                    Protocol specification
 test/                    End-to-end test suite
 ```
 
 See [plan.md](plan.md) for the full architecture design.
+
+## Reproducible Builds
+
+All build inputs are pinned for verifiability:
+
+- **Rust compiler**: `rust-toolchain.toml` → Rust 1.85.0
+- **System dependencies**: `flake.lock` → nixpkgs 24.11 LTS (exact commit)
+- **Cargo crates**: `Cargo.lock` → exact versions + checksums
+- **Node.js**: Nix flake → Node.js 22 LTS
+
+```bash
+# Enter reproducible dev shell (all tools pinned)
+nix develop
+
+# Build any package — identical output for same commit
+nix build .#glasuvai-verifier
+```
 
 ## License
 

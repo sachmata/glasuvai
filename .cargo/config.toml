@@ -1,0 +1,10 @@
+# Cargo configuration for glasuvai workspace
+# See: https://doc.rust-lang.org/cargo/reference/config.html
+
+[build]
+# Fail on warnings in CI (uncomment for strict mode)
+# rustflags = ["-D", "warnings"]
+
+[target.wasm32-unknown-unknown]
+# wasm-specific settings
+rustflags = ["-C", "opt-level=z"] # Optimize for size in WASM builds
