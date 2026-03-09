@@ -145,7 +145,11 @@ pub enum AuthError {
 
 ```rust
 /// Creates a set of test voters for the demo.
-/// All assigned to a specific MIR with random identity codes.
+/// All assigned to a specific MIR with randomly generated identity codes.
+///
+/// Identity codes are generated from fresh randomness, matching the on-demand
+/// random generation described in PLAN.md Section 11. For the demo, a seeded
+/// PRNG is used for reproducibility (production uses CSPRNG).
 pub fn generate_demo_voters(
     count: u32,
     mir_id: u32,
@@ -157,10 +161,15 @@ pub fn generate_demo_voters(
     //
     // Each voter:
     //   EGN: 10-digit number (demo uses "0000000001", "0000000002", ...)
-    //   Identity code: 12 random Base32 chars (XXXX-XXXX-XXXX)
+    //   Identity code: 12 random Base32 chars (72 bits entropy),
+    //                  formatted as XXXX-XXXX-XXXX (excluding ambiguous chars)
     //   code_hash: sha256(egn || code || election_id)
     //   mir_id: the provided mir_id
     //   name: "Тестов Гласоподавател N" (Test Voter N)
+    //
+    // For reproducibility in tests, the demo uses a seeded PRNG (not CSPRNG).
+    // The demo client receives cleartext codes via voter_codes.json.
+    // In production, codes are generated from CSPRNG and never retained.
 }
 ```
 

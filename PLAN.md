@@ -95,14 +95,16 @@ Before election day (T-30 to T-7 days):
    - Example: A3F7-KM9B-XWDQ
 3. Code is stored as H(EGN || code) — the system only stores the hash, not the plaintext code
 4. Distribution options:
-   - Municipal office (община): Citizen presents лична карта (ID card), clerk prints code from sealed envelope
+   - Municipal office (община): Citizen presents лична карта (ID card), clerk verifies identity → code is generated on demand and displayed on a **voter-facing device** (small screen or receipt printer, like a bank PIN pad). The clerk's terminal shows only "Code issued successfully" — the clerk never sees the code.
    - Online via eID: Citizens with valid QES can request code delivery to their authenticated session (skip office visit entirely)
 5. Each code is single-use for authentication but allows re-voting (re-authenticate, re-vote)
 
 Security properties:
 - The code alone is useless without the matching EGN
 - The EGN alone is useless without the code
-- Neither the municipality clerk nor the printer sees both EGN and code together (codes are pre-printed in sealed envelopes keyed by voter number, not EGN)
+- The clerk sees the voter's identity but never sees the code (displayed only on the voter-facing device)
+- The backend generates and hashes the code in a single atomic transaction — the plaintext code is transmitted only to the voter-facing device and never stored
+- No persistent secret exists that could be used to reconstruct codes — ballot secrecy is a cryptographic guarantee, not a trust assumption
 
 ### 2.3 Blind Signature Protocol (Identity Unlinking)
 This is the critical mechanism that prevents linking identity to vote:
@@ -712,10 +714,18 @@ The voting server and bulletin board run in Confidential Computing enclaves (AMD
 │  ├── /mobile-client   (TypeScript + React Native)         │
 │  │   └── (mirrors web-client structure)                   │
 │  │                                                        │
-│  └── /admin           (Rust)  Election setup tools        │
-│      ├── src/election_setup.rs Configure election params  │
-│      ├── src/voter_roll.rs     Import voter roll          │
-│      └── src/code_gen.rs       Generate identity codes    │
+│  ├── /admin           (Rust)  Election setup tools        │
+│  │   ├── src/election_setup.rs Configure election params  │
+│  │   ├── src/voter_roll.rs     Import voter roll          │
+│  │   └── src/code_gen.rs       Generate identity codes    │
+│  │                                                        │
+│  └── /code-kiosk      (Rust)  Municipal code distribution │
+│      ├── src/generate/        CSPRNG code gen + hashing   │
+│      ├── src/clerk/           Issuance workflow + session  │
+│      ├── src/idp_client/      IdP eligibility + hash reg  │
+│      ├── src/output/          Voter-facing output sinks   │
+│      │   (stdout, serial, file/pipe)                      │
+│      └── src/audit/           Hash-chained audit log      │
 │                                                           │
 │  /nix                 Reproducible build definitions       │
 │  /docs                Protocol specification               │
@@ -861,34 +871,45 @@ Honesty requires acknowledging limitations:
 
 **T-60 days:** ЦИК publishes voter roll per MIR (name + voter number, no EGN). Public can challenge (ineligible voters, missing voters).
 
-**T-30 days:** Code generation ceremony (public, recorded):
-- HSM generates 6.5M random codes (one per eligible voter)
-- Each code bound to voter via: H(EGN || code || election_id || salt)
-- Hashes published on BB for later verification
-- Codes printed on tamper-evident sealed cards
-- Cards sorted by municipality, NOT by name/EGN
-- Each sealed card has a unique serial number printed on the outside (visible without opening); the code is inside
-- Cards shipped to municipal offices in sealed, tamper-evident containers
-- Container seals logged (serial numbers, photographs) and published
+**T-30 days:** System provisioning:
+- The Identity Provider's code-generation backend is deployed with a hardware random number generator (HRNG/TRNG) for high-quality entropy
+- No bulk generation or printing occurs. No sealed cards, envelopes, or physical logistics.
+- No HSM master secret — each code is generated from fresh randomness at issuance time and immediately discarded after hashing. There is no secret that could be used to reconstruct codes after the fact.
 
-**T-30 to T-1:** Distribution at municipal offices. Chain-of-custody protocol:
+**T-30 to T-1:** On-demand distribution at municipal offices:
 - Party observers may be present during distribution (same right as for paper ballot distribution under the Electoral Code)
-- Citizen presents лична карта
-- Clerk scans ID → system displays ONLY the shelf/bin location of a randomly assigned envelope (not pre-assigned to this citizen)
-- **CRITICAL:** Assignment is randomized at distribution time. The system picks a random available envelope from the municipality pool. This prevents pre-computed (citizen → code) mappings.
-- Clerk retrieves sealed card from indicated location, hands to citizen
-- Citizen signs receipt; clerk confirms handover in system
-- System records: "Voter #N received card serial #S" (but not the code inside, which is unknown to the system after generation)
-- Clerk never sees the code. System never stores (citizen → code).
-- Distribution log published daily (count per municipality + card serial numbers distributed, no voter names/EGNs)
+- Citizen presents лична карта (ID card)
+- Clerk scans ID → clerk's terminal sends the voter sequence number to the backend (the clerk's screen shows only the voter's name and municipality for identity verification)
+- Backend verifies eligibility, generates a fresh random 12-character code (72 bits from CSPRNG), computes H(EGN || code || election_id || salt), stores only the hash, and sends the plaintext code to the voter-facing device
+- The code is displayed on a **voter-facing device** at the clerk's desk — a small screen or thermal receipt printer oriented toward the voter (like a bank PIN pad). The clerk's terminal displays only "Code issued successfully."
+- **CRITICAL SEPARATION:** The clerk sees the voter's identity (name, ID card) but never sees the code. The backend generates and hashes the code in a single atomic transaction — the plaintext is transmitted only to the voter-facing device and never retained.
+- Citizen reads the code from the voter-facing device (or takes the printed receipt)
+- Clerk confirms handover in system; citizen signs receipt
+- System records: "Voter #N received code at [timestamp]" (but not the code itself — only H(EGN || code || election_id || salt) is stored)
+- Distribution log published daily (count per municipality, no voter names/EGNs)
+
+**Hardware requirements per municipal desk:**
+- One voter-facing display (small LCD, ~€30) OR one thermal receipt printer (standard POS printer, ~€50)
+- Connected to the clerk's terminal via USB; displays/prints only the code
+- No network access from the voter-facing device itself — it receives data only from the clerk's terminal
+- Estimated national deployment: ~3,000 municipal desks × ~€50 = ~€150K total hardware cost
+
+**Re-issuance:** If a voter loses their code, they return to the municipal office, re-verify identity, and receive a **new** random code. The old code hash is replaced with the new one. The system logs the re-issuance event. Since the old code is irrecoverable (never stored), any attacker who previously obtained it through social engineering is locked out once the voter re-issues. A voter who has already cast a ballot with a token derived from the old code must re-authenticate and re-vote with their new code (the re-voting mechanism in Section 4.3 handles this seamlessly).
 
 Alternative: **Online via eID**
 - Citizen authenticates with QES certificate
+- Backend generates a fresh random code (same process as in-person)
 - Code displayed on screen (once only) or sent to registered email
-- Same code as would be in the sealed envelope
-- If received online, the corresponding physical card is marked as "claimed electronically" and destroyed at end of distribution period
+- If received online, no physical visit needed
 
 **Election day:** Citizen uses ЕГН + code to authenticate
+
+**Advantages over pre-printed sealed cards:**
+- Eliminates printing, sorting, shipping, and storing 6.5M sealed cards
+- No physical supply chain to attack (no interception, no tampering with envelopes)
+- No waste from unclaimed cards
+- No persistent secret material: unlike sealed cards (physical) or HSM-derived codes (master secret), random codes are never stored and cannot be reconstructed by anyone — including the system operator
+- **Cryptographic ballot secrecy guarantee:** since the Identity Provider cannot recover any voter's code after issuance, it cannot compute voter tokens (T = H(EGN || code || election_id || "token")), and therefore cannot link identities to ballots on the bulletin board. Ballot secrecy depends on cryptography, not on trusting the IdP operator.
 ---
 
 ## 12. INFRASTRUCTURE TOPOLOGY
@@ -953,12 +974,9 @@ Diaspora voters are registered in the voter roll for MIR 32 based on:
 Identity code distribution for diaspora:
 - Path A (eID): Diaspora voters with valid Bulgarian QES certificates authenticate
   online and receive their identity code electronically (same as domestic Path A)
-- Path B (Consular): Voters registered at a consulate receive sealed identity code
-  cards by visiting the consulate in person (same chain-of-custody protocol as
-  domestic municipal distribution, adapted for consular offices)
-- Path C (Postal — if legally permissible): Sealed card mailed to voter's registered
-  foreign address via tracked registered mail. Requires prior consular registration.
-  This path has higher interception risk and should only be offered if approved by ЦИК.
+- Path B (Consular): Voters registered at a consulate visit in person, present ID,
+  and receive their code via a voter-facing device at the consular desk (same
+  on-demand generation protocol as domestic municipal distribution, Section 11)
 #### 12.1.3 Time Zone Handling
 Online voting for MIR 32 follows Bulgarian time (EET/EEST):
 - Voting opens and closes at the same absolute time as domestic voting
@@ -1089,7 +1107,7 @@ The web client must meet WCAG 2.1 Level AA as a minimum:
 ### 16.4 Low Digital Literacy Accommodation
 - Municipal offices offer supervised kiosks where voters can cast online votes with staff assistance
   (staff assists with device operation but CANNOT see the ballot — privacy screen + voter confirms alone)
-- Printed step-by-step guides distributed with identity code cards
+- Printed step-by-step guides available at municipal offices and distributed with code receipts
 - Video tutorials on glasuvai.bg in Bulgarian and Turkish
 - Phone helpline (non-technical) for authentication and navigation issues
 

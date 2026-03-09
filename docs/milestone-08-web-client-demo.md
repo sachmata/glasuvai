@@ -330,8 +330,9 @@ fn setup(mir_id: u32, num_voters: u32, num_trustees: u32, threshold: u32) {
     //    - Publish public keys
 
     // 3. Generate 50 demo voters for MIR 23
-    //    - Random EGNs and identity codes
-    //    - Save voters.json (voter roll for IdP)
+    //    - Demo EGNs ("0000000001", "0000000002", ...)
+    //    - Identity codes: random 12-char Base32 (seeded PRNG for demo reproducibility)
+    //    - Save voters.json (voter roll for IdP, contains code_hash only)
     //    - Save voter_codes.json (cleartext codes, for demo client)
 
     // 4. Load ballot spec for MIR 23 (real party and candidate data)

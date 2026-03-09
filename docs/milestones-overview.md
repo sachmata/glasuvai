@@ -36,6 +36,9 @@ M1: Foundation ──────┐
                      │                      M7: Verifier ─────────┤
                      │                      (depends on M4+M6)    │
                      │                                            │
+                     │                      M9: Code Kiosk ───────┤
+                     │                      (depends on M1+M2+M5) │
+                     │                                            │
                      └────────────────────> M8: Web Client ───────┘
                                            & E2E Demo
                                            (depends on all)
@@ -53,8 +56,9 @@ M1: Foundation ──────┐
 | M6 | Tally & Threshold Decryption | `/packages/tally` | 1–2 weeks | Homomorphic aggregation, threshold decryption ceremony, Hare-Niemeyer seat allocation, 7% preference threshold |
 | M7 | Independent Verifier | `/packages/verifier` | 1 week | CLI tool that verifies an entire election: ZKPs, chain, tally, decryption proofs |
 | M8 | Web Client & E2E Demo | `/packages/web-client`, `/packages/crypto-wasm`, `/packages/trustee-tool` | 2 weeks | React UI with real Bulgarian ballots, Rust→WASM crypto from shared crate (~200-500 KB), full demo script from vote to verified result |
+| M9 | Code Kiosk | `/packages/code-kiosk` | 1 week | Municipal desk CLI for on-demand random code generation, voter-facing output (stdout/serial/pipe), IdP hash registration, hash-chained audit log |
 
-**Total estimated: 10–14 weeks**
+**Total estimated: 11–15 weeks**
 
 ## Demo Scenario
 
