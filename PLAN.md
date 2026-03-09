@@ -309,8 +309,20 @@ Deterministic token derivation (recommended for V1):
 - The identity_code has 72 bits of entropy (Section 2.2), making brute-force infeasible even for a single known EGN
 This is simpler: no multi-token resolution needed. The voting server sees T and replaces the old ballot. The bulletin board shows version history (old ballot marked as superseded).
 
-### 4.4 In-Person Override (Coercion Countermeasure)
+**Important distinction — re-voting vs. in-person override:**
+- **Re-voting is exclusively an online mechanism.** A voter can authenticate and submit a new encrypted ballot as many times as they want before 20:00. Each submission overwrites the previous one for the same token T. The voter stays in the online channel throughout.
+- **In-person override (Section 4.4) is NOT re-voting.** It is a one-time, irreversible cancellation of the online ballot. The voter physically goes to their polling station, the online ballot is permanently marked as overridden, and the voter casts a paper/machine ballot instead. There is no way to return to the online channel after an in-person override.
+
+### 4.4 In-Person Override (Coercion Countermeasure — NOT Re-voting)
 A voter who has cast an online ballot may override it by voting in person at their assigned polling station on election day. This is the strongest practical countermeasure against vote buying and coercion in Bulgaria's context.
+
+**This is NOT re-voting.** The in-person override is a one-way, irreversible operation:
+1. The voter's online ballot is permanently marked as overridden (excluded from tally)
+2. The voter casts a paper/machine ballot at the station, which is final
+3. The Identity Provider blocks all further online token issuance for this EGN
+4. The voter cannot return to the online channel — the paper ballot is their definitive vote
+
+Re-voting (casting multiple online ballots, with only the last counting) exists only in the online channel (Section 4.3). At the polling station, there is exactly one action: cancel online ballot → vote on paper → done.
 #### 4.4.1 Infrastructure: Existing Machine Voting Devices
 Bulgaria already deploys machine voting devices ("Информационно обслужване" tablets) at
 virtually all ~12,000 polling stations. These devices have:
@@ -420,6 +432,21 @@ For the small number of stations without networked devices:
   in addition to sending to the Voting Server — post-election audit can cross-check
 - Online re-voting is blocked for overridden voters: once the Identity Provider processes
   the override, it refuses to issue new blind-signed tokens for that EGN
+- The override is **irreversible** — there is no mechanism to "undo" an override and return
+  to online voting. The paper ballot is final.
+
+**Summary — re-voting vs. in-person override:**
+
+| Property | Online re-voting (Sec 4.3) | In-person override (Sec 4.4) |
+|---|---|---|
+| Where | From any device (browser/app) | Physical polling station only |
+| How many times | Unlimited until 20:00 | Exactly once |
+| Reversible | Yes (next re-vote overwrites) | No — permanent and final |
+| What happens | New encrypted ballot replaces old for same token T | Online ballot cancelled; voter casts paper/machine ballot |
+| Can return to online | Yes | No — IdP blocks further token issuance |
+| Final vote | Last online ballot for token T | Paper/machine ballot at station |
+| Software | Web/mobile client (`web-client`, `mobile-client`) | Station override module (`station-override`) |
+
 This mechanism means a coercer can never be certain the voter didn't override their
 coerced online vote by visiting the polling station privately on election day.
 ---
@@ -718,6 +745,17 @@ The voting server and bulletin board run in Confidential Computing enclaves (AMD
 │  │   ├── src/election_setup.rs Configure election params  │
 │  │   ├── src/voter_roll.rs     Import voter roll          │
 │  │   └── src/code_gen.rs       Generate identity codes    │
+│  │                                                        │
+│  ├── /station-override (Rust)  Polling station override   │
+│  │   ├── src/auth/            Commission member auth      │
+│  │   ├── src/query/           IdP query: "has EGN voted?" │
+│  │   ├── src/override/        Override msg to Voting Srv  │
+│  │   ├── src/ui/              Touch-screen UI (egui/iced) │
+│  │   └── src/audit/           Local tamper-evident log    │
+│  │   Runs on machine voting devices at ~12,000 stations.  │
+│  │   Separate process from machine voting software.       │
+│  │   Queries IdP by EGN, receives token_hash, sends       │
+│  │   override to Voting Server (never sends EGN to VS).   │
 │  │                                                        │
 │  └── /code-kiosk      (Rust)  Municipal code distribution │
 │      ├── src/generate/        CSPRNG code gen + hashing   │

@@ -39,6 +39,11 @@ M1: Foundation ──────┐
                      │                      M9: Code Kiosk ───────┤
                      │                      (depends on M1+M2+M5) │
                      │                                            │
+                     │                      M10: Station ─────────┤
+                     │                      Override              │
+                     │                      (depends on M1+M2+    │
+                     │                       M4+M5)               │
+                     │                                            │
                      └────────────────────> M8: Web Client ───────┘
                                            & E2E Demo
                                            (depends on all)
@@ -57,8 +62,9 @@ M1: Foundation ──────┐
 | M7 | Independent Verifier | `/packages/verifier` | 1 week | CLI tool that verifies an entire election: ZKPs, chain, tally, decryption proofs |
 | M8 | Web Client & E2E Demo | `/packages/web-client`, `/packages/crypto-wasm`, `/packages/trustee-tool` | 2 weeks | React UI with real Bulgarian ballots, Rust→WASM crypto from shared crate (~200-500 KB), full demo script from vote to verified result |
 | M9 | Code Kiosk | `/packages/code-kiosk` | 1 week | Municipal desk CLI for on-demand random code generation, voter-facing output (stdout/serial/pipe), IdP hash registration, hash-chained audit log |
+| M10 | Station Override | `/packages/station-override` | 1 week | Polling station in-person override module: commission two-member auth, IdP voter status query, signed override submission to Voting Server, local tamper-evident audit log |
 
-**Total estimated: 11–15 weeks**
+**Total estimated: 12–16 weeks**
 
 ## Demo Scenario
 

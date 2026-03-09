@@ -40,6 +40,7 @@ packages/
   web-client/            TypeScript + React — voter UI
   mobile-client/         React Native — mobile voter UI
   admin/                 Rust — election setup tools
+  station-override/      Rust — polling station in-person override module
 nix/                     Additional Nix build definitions
 docs/                    Protocol specification
 test/                    End-to-end test suite
