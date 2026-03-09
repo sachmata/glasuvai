@@ -1,0 +1,60 @@
+# ── Glasuvai .dockerignore ──────────────────────────────────────────
+# Prevents unnecessary files from being sent to the Docker build context.
+
+# Version control
+.git
+.gitignore
+
+# Build artifacts
+target/
+**/target/
+result
+result-*
+dist/
+build/
+
+# Node
+node_modules/
+**/node_modules/
+
+# WASM build outputs (rebuilt inside container)
+packages/crypto-wasm/pkg/
+*.wasm
+
+# Nix
+.direnv/
+.devenv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (don't send Docker files into themselves)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Test / CI artifacts
+coverage/
+*.test.log
+
+# Docs (not needed for building)
+docs/
+*.md
+!README.md
+LICENSE

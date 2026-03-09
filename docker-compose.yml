@@ -1,0 +1,163 @@
+# ── Glasuvai — Docker Compose Development Setup ────────────────────
+# Provides containerized dev environment mirroring the Nix devShell.
+#
+# Usage:
+#   docker compose up -d                  # Start all services
+#   docker compose exec dev bash          # Interactive shell
+#   docker compose up web-client          # Web client dev server
+#   docker compose logs -f bulletin-board # Follow service logs
+#   docker compose down                   # Stop everything
+#
+# First run:
+#   docker compose build                  # Build dev image
+
+name: glasuvai
+
+services:
+  # ── Dev shell ────────────────────────────────────────────────────
+  # Interactive development container with full toolchain.
+  # Mount source code and cargo/npm caches for fast iteration.
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: glasuvai-dev
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - cargo-target:/workspace/target
+      - sccache:/root/.cache/sccache
+    environment:
+      - RUSTC_WRAPPER=sccache
+      - SCCACHE_DIR=/root/.cache/sccache
+      - CARGO_INCREMENTAL=1
+    networks:
+      - glasuvai
+
+  # ── Bulletin Board ──────────────────────────────────────────────
+  # Append-only public ledger of encrypted ballots.
+  # Uncomment when the package has runnable code.
+  #
+  # bulletin-board:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   container_name: glasuvai-bulletin-board
+  #   working_dir: /workspace
+  #   command: cargo run -p glasuvai-bulletin-board
+  #   volumes:
+  #     - .:/workspace
+  #     - cargo-registry:/usr/local/cargo/registry
+  #     - cargo-git:/usr/local/cargo/git
+  #     - cargo-target:/workspace/target
+  #     - bb-data:/workspace/data/bulletin-board
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - RUST_LOG=info
+  #     - BB_LISTEN_ADDR=0.0.0.0:3001
+  #     - BB_DB_PATH=/workspace/data/bulletin-board/bb.sqlite
+  #   networks:
+  #     - glasuvai
+
+  # ── Voting Server ───────────────────────────────────────────────
+  # Receives encrypted ballots, validates blind signatures.
+  #
+  # voting-server:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   container_name: glasuvai-voting-server
+  #   working_dir: /workspace
+  #   command: cargo run -p glasuvai-voting-server
+  #   volumes:
+  #     - .:/workspace
+  #     - cargo-registry:/usr/local/cargo/registry
+  #     - cargo-git:/usr/local/cargo/git
+  #     - cargo-target:/workspace/target
+  #     - vs-data:/workspace/data/voting-server
+  #   ports:
+  #     - "3002:3002"
+  #   environment:
+  #     - RUST_LOG=info
+  #     - VS_LISTEN_ADDR=0.0.0.0:3002
+  #     - VS_DB_PATH=/workspace/data/voting-server/vs.sqlite
+  #     - BB_URL=http://bulletin-board:3001
+  #   depends_on:
+  #     - bulletin-board
+  #   networks:
+  #     - glasuvai
+
+  # ── Identity Provider ───────────────────────────────────────────
+  # Validates voter identity, issues blind signatures.
+  #
+  # identity-provider:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   container_name: glasuvai-identity-provider
+  #   working_dir: /workspace
+  #   command: cargo run -p glasuvai-identity-provider
+  #   volumes:
+  #     - .:/workspace
+  #     - cargo-registry:/usr/local/cargo/registry
+  #     - cargo-git:/usr/local/cargo/git
+  #     - cargo-target:/workspace/target
+  #   ports:
+  #     - "3003:3003"
+  #   environment:
+  #     - RUST_LOG=info
+  #     - IDP_LISTEN_ADDR=0.0.0.0:3003
+  #   networks:
+  #     - glasuvai
+
+  # ── Web Client (Vite dev server) ────────────────────────────────
+  # React + TypeScript SPA with WASM crypto bridge.
+  # Uncomment when web-client has package.json and source.
+  #
+  # web-client:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   container_name: glasuvai-web-client
+  #   working_dir: /workspace/packages/web-client
+  #   command: npm run dev -- --host 0.0.0.0
+  #   volumes:
+  #     - .:/workspace
+  #     - node-modules:/workspace/packages/web-client/node_modules
+  #   ports:
+  #     - "5173:5173"
+  #   environment:
+  #     - VITE_BB_URL=http://localhost:3001
+  #     - VITE_VS_URL=http://localhost:3002
+  #     - VITE_IDP_URL=http://localhost:3003
+  #   depends_on:
+  #     - bulletin-board
+  #     - voting-server
+  #     - identity-provider
+  #   networks:
+  #     - glasuvai
+
+volumes:
+  cargo-registry:
+    name: glasuvai-cargo-registry
+  cargo-git:
+    name: glasuvai-cargo-git
+  cargo-target:
+    name: glasuvai-cargo-target
+  sccache:
+    name: glasuvai-sccache
+  # bb-data:
+  #   name: glasuvai-bb-data
+  # vs-data:
+  #   name: glasuvai-vs-data
+  # node-modules:
+  #   name: glasuvai-node-modules
+
+networks:
+  glasuvai:
+    name: glasuvai-net

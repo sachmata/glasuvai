@@ -1,0 +1,82 @@
+# ── Glasuvai Development Container ──────────────────────────────────
+# Multi-stage Dockerfile for reproducible development environment.
+# Mirrors the Nix devShell tooling without requiring Nix on the host.
+#
+# Usage:
+#   docker compose up dev          # Interactive shell
+#   docker compose up web-client   # Vite dev server
+#   docker compose up --build      # Rebuild after Dockerfile changes
+#
+# The Rust version is read from rust-toolchain.toml at build time,
+# keeping it in sync with the Nix flake (both read the same file).
+
+FROM debian:bookworm-slim AS rust-base
+
+# ── System dependencies ─────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Rust toolchain (from rust-toolchain.toml — single source of truth) ──
+COPY rust-toolchain.toml /tmp/rust-toolchain.toml
+RUN RUST_VERSION=$(grep '^channel' /tmp/rust-toolchain.toml | sed 's/.*= *"//;s/"//') \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --default-toolchain "$RUST_VERSION" \
+    && rm /tmp/rust-toolchain.toml
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install targets and components declared in rust-toolchain.toml
+COPY rust-toolchain.toml /tmp/rust-toolchain.toml
+RUN TARGETS=$(grep '^targets' /tmp/rust-toolchain.toml | sed 's/.*\[//;s/\]//;s/"//g;s/,/ /g') \
+    && for t in $TARGETS; do rustup target add "$t"; done \
+    && COMPONENTS=$(grep '^components' /tmp/rust-toolchain.toml | sed 's/.*\[//;s/\]//;s/"//g;s/,/ /g') \
+    && for c in $COMPONENTS; do rustup component add "$c"; done \
+    && rm /tmp/rust-toolchain.toml
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libsqlite3-dev \
+    libssl-dev \
+    curl \
+    git \
+    ca-certificates \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── wasm-pack ───────────────────────────────────────────────────────
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+# ── cargo-audit & cargo-deny (security tooling) ────────────────────
+RUN cargo install cargo-audit cargo-deny
+
+# ── Node.js 22 LTS (for web-client) ────────────────────────────────
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g npm@latest
+
+# ── sccache for faster rebuilds (optional but helpful) ──────────────
+RUN cargo install sccache
+ENV RUSTC_WRAPPER=sccache
+
+# ── Workspace ───────────────────────────────────────────────────────
+WORKDIR /workspace
+
+# Copy Cargo workspace manifests first for layer caching
+# (these files change less often than source code)
+COPY Cargo.toml Cargo.lock* rust-toolchain.toml .cargo/ ./
+COPY packages/crypto/Cargo.toml packages/crypto/Cargo.toml
+COPY packages/crypto-wasm/Cargo.toml packages/crypto-wasm/Cargo.toml
+COPY packages/admin/Cargo.toml packages/admin/Cargo.toml
+COPY packages/bulletin-board/Cargo.toml packages/bulletin-board/Cargo.toml
+COPY packages/identity-provider/Cargo.toml packages/identity-provider/Cargo.toml
+COPY packages/voting-server/Cargo.toml packages/voting-server/Cargo.toml
+COPY packages/tally/Cargo.toml packages/tally/Cargo.toml
+COPY packages/verifier/Cargo.toml packages/verifier/Cargo.toml
+COPY packages/trustee-tool/Cargo.toml packages/trustee-tool/Cargo.toml
+
+# Copy full source
+COPY . .
+
+# ── Entrypoint ──────────────────────────────────────────────────────
+CMD ["/bin/bash"]
