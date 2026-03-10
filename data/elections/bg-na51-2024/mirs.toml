@@ -1,0 +1,190 @@
+# All 31 multi-member constituencies (МИР) for the 51st National Assembly.
+# Seat counts sourced from official ЦИК results for 27 October 2024:
+# https://results.cik.bg/pe202410_ks/hnm.64.html
+# Total seats: 240
+
+[[mir]]
+id = 1
+name = "Благоевград"
+name_latin = "Blagoevgrad"
+seats = 11
+
+[[mir]]
+id = 2
+name = "Бургас"
+name_latin = "Burgas"
+seats = 14
+
+[[mir]]
+id = 3
+name = "Варна"
+name_latin = "Varna"
+seats = 16
+
+[[mir]]
+id = 4
+name = "Велико Търново"
+name_latin = "Veliko Tarnovo"
+seats = 8
+
+[[mir]]
+id = 5
+name = "Видин"
+name_latin = "Vidin"
+seats = 4
+
+[[mir]]
+id = 6
+name = "Враца"
+name_latin = "Vratsa"
+seats = 6
+
+[[mir]]
+id = 7
+name = "Габрово"
+name_latin = "Gabrovo"
+seats = 4
+
+[[mir]]
+id = 8
+name = "Добрич"
+name_latin = "Dobrich"
+seats = 5
+
+[[mir]]
+id = 9
+name = "Кърджали"
+name_latin = "Kardzhali"
+seats = 5
+
+[[mir]]
+id = 10
+name = "Кюстендил"
+name_latin = "Kyustendil"
+seats = 4
+
+[[mir]]
+id = 11
+name = "Ловеч"
+name_latin = "Lovech"
+seats = 4
+
+[[mir]]
+id = 12
+name = "Монтана"
+name_latin = "Montana"
+seats = 4
+
+[[mir]]
+id = 13
+name = "Пазарджик"
+name_latin = "Pazardzhik"
+seats = 8
+
+[[mir]]
+id = 14
+name = "Перник"
+name_latin = "Pernik"
+seats = 4
+
+[[mir]]
+id = 15
+name = "Плевен"
+name_latin = "Pleven"
+seats = 8
+
+[[mir]]
+id = 16
+name = "Пловдив град"
+name_latin = "Plovdiv City"
+seats = 12
+
+[[mir]]
+id = 17
+name = "Пловдив област"
+name_latin = "Plovdiv Province"
+seats = 11
+
+[[mir]]
+id = 18
+name = "Разград"
+name_latin = "Razgrad"
+seats = 4
+
+[[mir]]
+id = 19
+name = "Русе"
+name_latin = "Ruse"
+seats = 7
+
+[[mir]]
+id = 20
+name = "Силистра"
+name_latin = "Silistra"
+seats = 4
+
+[[mir]]
+id = 21
+name = "Сливен"
+name_latin = "Sliven"
+seats = 6
+
+[[mir]]
+id = 22
+name = "Смолян"
+name_latin = "Smolyan"
+seats = 4
+
+[[mir]]
+id = 23
+name = "София 23 МИР"
+name_latin = "Sofia 23"
+seats = 19
+
+[[mir]]
+id = 24
+name = "София 24 МИР"
+name_latin = "Sofia 24"
+seats = 13
+
+[[mir]]
+id = 25
+name = "София 25 МИР"
+name_latin = "Sofia 25"
+seats = 14
+
+[[mir]]
+id = 26
+name = "София област"
+name_latin = "Sofia Province"
+seats = 8
+
+[[mir]]
+id = 27
+name = "Стара Загора"
+name_latin = "Stara Zagora"
+seats = 11
+
+[[mir]]
+id = 28
+name = "Търговище"
+name_latin = "Targovishte"
+seats = 4
+
+[[mir]]
+id = 29
+name = "Хасково"
+name_latin = "Haskovo"
+seats = 8
+
+[[mir]]
+id = 30
+name = "Шумен"
+name_latin = "Shumen"
+seats = 6
+
+[[mir]]
+id = 31
+name = "Ямбол"
+name_latin = "Yambol"
+seats = 4

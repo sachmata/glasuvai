@@ -1,0 +1,663 @@
+# Candidate lists for MIR 22 (Смолян) — 51st National Assembly
+# Source: ЦИК official open data export (local_candidates.txt)
+# https://results.cik.bg/pe202410_ks/opendata/export.zip
+
+mir_id = 22
+
+# ── Party #1 ──
+[[party_list]]
+party_number = 1
+
+[[party_list.candidate]]
+position = 1
+first_name = "Нермин"
+last_name = "Местан"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Христо"
+last_name = "Балев"
+
+# ── Party #2 ──
+[[party_list]]
+party_number = 2
+
+[[party_list.candidate]]
+position = 1
+first_name = "Исмет"
+last_name = "Кехайов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Сема"
+last_name = "Куцарова"
+
+# ── Party #3 ──
+[[party_list]]
+party_number = 3
+
+[[party_list.candidate]]
+position = 1
+first_name = "Младен"
+last_name = "Стефанов"
+
+# ── Party #4 ──
+[[party_list]]
+party_number = 4
+
+[[party_list.candidate]]
+position = 1
+first_name = "Лариса"
+last_name = "Савова"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Борислав"
+last_name = "Киряков"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Крум"
+last_name = "Савов"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Асан"
+last_name = "Молла"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Александър"
+last_name = "Златилов"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Миглена"
+last_name = "Илиева"
+
+[[party_list.candidate]]
+position = 7
+first_name = "Ивайло"
+last_name = "Василев"
+
+[[party_list.candidate]]
+position = 8
+first_name = "Стойчо"
+last_name = "Бозуков"
+
+# ── Party #5 ──
+[[party_list]]
+party_number = 5
+
+[[party_list.candidate]]
+position = 1
+first_name = "Искра"
+last_name = "Недева"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Александър"
+last_name = "Димитров"
+
+# ── Party #6 ──
+[[party_list]]
+party_number = 6
+
+[[party_list.candidate]]
+position = 1
+first_name = "Стефан"
+last_name = "Кехайов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Наско"
+last_name = "Гелимачев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Ваня"
+last_name = "Тодорова"
+
+# ── Party #7 ──
+[[party_list]]
+party_number = 7
+
+[[party_list.candidate]]
+position = 1
+first_name = "Александър"
+last_name = "Вълчев"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Андрей"
+last_name = "Кадишев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Тодор"
+last_name = "Папучаров"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Йордан"
+last_name = "Йорданов"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Мария"
+last_name = "Дамянова"
+
+# ── Party #8 ──
+[[party_list]]
+party_number = 8
+
+[[party_list.candidate]]
+position = 1
+first_name = "Халил"
+last_name = "Летифов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Сафидин"
+last_name = "Чикуртев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Медиха"
+last_name = "Заимова"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Николай"
+last_name = "Андреев"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Светла"
+last_name = "Терзиева"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Данчо"
+last_name = "Георгиев"
+
+[[party_list.candidate]]
+position = 7
+first_name = "Емил"
+last_name = "Пържанов"
+
+[[party_list.candidate]]
+position = 8
+first_name = "Атанас"
+last_name = "Сталев"
+
+# ── Party #9 ──
+[[party_list]]
+party_number = 9
+
+[[party_list.candidate]]
+position = 1
+first_name = "Милийо"
+last_name = "Милев"
+
+# ── Party #10 ──
+[[party_list]]
+party_number = 10
+
+[[party_list.candidate]]
+position = 1
+first_name = "Любомир"
+last_name = "Кьосев"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Михаил"
+last_name = "Груев"
+
+# ── Party #11 ──
+[[party_list]]
+party_number = 11
+
+[[party_list.candidate]]
+position = 1
+first_name = "Георги"
+last_name = "Гемов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Магдалена"
+last_name = "Чалъкова"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Иван"
+last_name = "Атанасов"
+
+# ── Party #12 ──
+[[party_list]]
+party_number = 12
+
+[[party_list.candidate]]
+position = 1
+first_name = "Ангел"
+last_name = "Георгиев"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Здравко"
+last_name = "Гюров"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Юлия"
+last_name = "Ненова"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Детелин"
+last_name = "Качаров"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Александър"
+last_name = "Чандъров"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Милка"
+last_name = "Ковачева"
+
+# ── Party #13 ──
+[[party_list]]
+party_number = 13
+
+[[party_list.candidate]]
+position = 1
+first_name = "Хайри"
+last_name = "Садъков"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Анджей"
+last_name = "Джандев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Милко"
+last_name = "Кисьов"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Емил"
+last_name = "Руженов"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Владимир"
+last_name = "Ратайски"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Нези"
+last_name = "Карахасан"
+
+[[party_list.candidate]]
+position = 7
+first_name = "Леман"
+last_name = "Фезова"
+
+[[party_list.candidate]]
+position = 8
+first_name = "Румен"
+last_name = "Пехливанов"
+
+# ── Party #14 ──
+[[party_list]]
+party_number = 14
+
+[[party_list.candidate]]
+position = 1
+first_name = "Петър"
+last_name = "Виденов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Ждан"
+last_name = "Чаушев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Борис"
+last_name = "Иванов"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Иванка"
+last_name = "Петрова"
+
+# ── Party #15 ──
+[[party_list]]
+party_number = 15
+
+[[party_list.candidate]]
+position = 1
+first_name = "Георги"
+last_name = "Неделчев"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Десислава"
+last_name = "Георгиева"
+
+# ── Party #16 ──
+[[party_list]]
+party_number = 16
+
+[[party_list.candidate]]
+position = 1
+first_name = "Даница"
+last_name = "Иванова"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Мария"
+last_name = "Томова"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Николина"
+last_name = "Бялкова"
+
+# ── Party #17 ──
+[[party_list]]
+party_number = 17
+
+[[party_list.candidate]]
+position = 1
+first_name = "Борислав"
+last_name = "Петков"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Стефани"
+last_name = "Стоянова"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Антон"
+last_name = "Чилингиров"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Аргир"
+last_name = "Вълчев"
+
+# ── Party #18 ──
+[[party_list]]
+party_number = 18
+
+[[party_list.candidate]]
+position = 1
+first_name = "Николай"
+last_name = "Мелемов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Красимир"
+last_name = "Събев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Красимир"
+last_name = "Даскалов"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Недялко"
+last_name = "Славов"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Мария"
+last_name = "Семерджиева"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Иван"
+last_name = "Стоев"
+
+[[party_list.candidate]]
+position = 7
+first_name = "Радослав"
+last_name = "Филизов"
+
+[[party_list.candidate]]
+position = 8
+first_name = "Тодор"
+last_name = "Батков"
+
+# ── Party #19 ──
+[[party_list]]
+party_number = 19
+
+[[party_list.candidate]]
+position = 1
+first_name = "Димитър"
+last_name = "Керин"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Емануил"
+last_name = "Иванов"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Лилия"
+last_name = "Костадинова"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Иван"
+last_name = "Димитров"
+
+# ── Party #20 ──
+[[party_list]]
+party_number = 20
+
+[[party_list.candidate]]
+position = 1
+first_name = "Огнян"
+last_name = "Симеонов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Алдомир"
+last_name = "Досев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Велика"
+last_name = "Радева"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Николай"
+last_name = "Даскалов"
+
+# ── Party #21 ──
+[[party_list]]
+party_number = 21
+
+[[party_list.candidate]]
+position = 1
+first_name = "Валери"
+last_name = "Ценков"
+
+# ── Party #23 ──
+[[party_list]]
+party_number = 23
+
+[[party_list.candidate]]
+position = 1
+first_name = "Милан"
+last_name = "Косаров"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Митко"
+last_name = "Демирев"
+
+# ── Party #24 ──
+[[party_list]]
+party_number = 24
+
+[[party_list.candidate]]
+position = 1
+first_name = "Йоло"
+last_name = "Денев"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Лозан"
+last_name = "Пенов"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Ивайло"
+last_name = "Стефанов"
+
+# ── Party #25 ──
+[[party_list]]
+party_number = 25
+
+[[party_list.candidate]]
+position = 1
+first_name = "Максим"
+last_name = "Тополов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Мария"
+last_name = "Филипова-Райчева"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Димитър"
+last_name = "Марчев"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Станьо"
+last_name = "Стоев"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Недялка"
+last_name = "Иванова"
+
+# ── Party #26 ──
+[[party_list]]
+party_number = 26
+
+[[party_list.candidate]]
+position = 1
+first_name = "Михал"
+last_name = "Камбарев"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Зарко"
+last_name = "Маринов"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Сабахатин"
+last_name = "Гьокче"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Цветомира"
+last_name = "Вакева"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Антоанета"
+last_name = "Узунова"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Даниел"
+last_name = "Делибашев"
+
+[[party_list.candidate]]
+position = 7
+first_name = "Славка"
+last_name = "Чакърова"
+
+[[party_list.candidate]]
+position = 8
+first_name = "Мартин"
+last_name = "Божанов"
+
+# ── Party #27 ──
+[[party_list]]
+party_number = 27
+
+[[party_list.candidate]]
+position = 1
+first_name = "Митко"
+last_name = "Димитров"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Димитър"
+last_name = "Кьосев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Лидия"
+last_name = "Караиванова-Димитрова"
+
+# ── Party #28 ──
+[[party_list]]
+party_number = 28
+
+[[party_list.candidate]]
+position = 1
+first_name = "Лидия"
+last_name = "Стойкова-Чорбанова"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Станко"
+last_name = "Щерев"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Роксена"
+last_name = "Чавдарова"
+
+[[party_list.candidate]]
+position = 4
+first_name = "Марияна"
+last_name = "Методиева"
+
+[[party_list.candidate]]
+position = 5
+first_name = "Станка"
+last_name = "Насташова-Уюрова"
+
+[[party_list.candidate]]
+position = 6
+first_name = "Димитър"
+last_name = "Сивенов"
+
+[[party_list.candidate]]
+position = 7
+first_name = "Милен"
+last_name = "Пачелиев"
+
+[[party_list.candidate]]
+position = 8
+first_name = "Тодорка"
+last_name = "Манолевска"

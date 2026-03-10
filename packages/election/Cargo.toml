@@ -1,0 +1,21 @@
+[package]
+name = "glasuvai-election"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+# Feature flags select which election's data gets embedded.
+# Only one election should be active at a time.
+[features]
+default = ["bg-na51-2024"]
+bg-na51-2024 = []       # 51st National Assembly, Oct 2024
+serde-serialize = []    # Adds Serialize derives for JSON export
+# bg-na52-2025 = []     # future elections add a feature
+
+[build-dependencies]
+sha2 = "0.10"     # Used ONLY in build.rs to compute data digest
+walkdir = "2"     # Used ONLY in build.rs to enumerate data files

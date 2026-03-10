@@ -1,0 +1,12 @@
+[package]
+name = "glasuvai-crypto"
+version = "0.1.0"
+edition = "2021"
+
+# ZERO external dependencies — all crypto from first principles
+[dependencies]
+# (empty)
+
+[features]
+default = ["std"]
+std = []

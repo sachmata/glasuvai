@@ -8,7 +8,7 @@ A fully functional demonstration of verifiable online voting using **real ballot
 
 | Constraint | Rule |
 |---|---|
-| **No fancy libraries** | Crypto crate (`packages/crypto`): `#[no_std]`-compatible, ZERO external crates. P-256 curve operations, ElGamal, ZKPs, DKG, blind signatures — all from first principles using only `core`/`alloc`/`std`. |
+| **No fancy libraries** | Crypto crate (`packages/crypto`): `#[no_std]`-compatible, ZERO external crates. P-256 curve operations, ElGamal, ZKPs, DKG, blind signatures — all from first principles using only `core`/`alloc`/`std`. Election domain types and ballot data live in `packages/election` (with `serde`/`toml` deps for deserialization; feature flags select which election's data is embedded). |
 | **No fancy libraries** | Server plumbing: minimal well-audited crates for non-crypto infrastructure — `axum` (HTTP), `serde` (JSON), `rusqlite` (SQLite), `tokio` (async runtime). |
 | **One implementation** | The same Rust crypto crate compiles to both native (servers, CLI tools) and WASM (browser client). No duplicate implementations, no cross-language test vectors needed. |
 | **Verifiable without doubt** | Every cryptographic operation must be traceable to textbook definitions. Code reads like a math paper. `cargo test` covers all crypto for both server and client. |
@@ -53,7 +53,7 @@ M1: Foundation ──────┐
 
 | # | Name | Packages | Est. Effort | Key Deliverable |
 |---|---|---|---|---|
-| M1 | Foundation & Election Data | `/packages/crypto` | 1 week | Reproducible build infrastructure (Nix flake, pinned Rust toolchain), Rust workspace, Bulgarian election types, real 51st NA ballot data, test infrastructure |
+| M1 | Foundation & Election Data | `/packages/crypto`, `/packages/election`, `data/` | 1 week | Reproducible build infrastructure (Nix flake, pinned Rust toolchain), Rust workspace, election domain types + real 51st NA ballot data as TOML (feature-gated embedding with SHA-256 anti-tampering digest) |
 | M2 | Cryptographic Primitives | `/packages/crypto` | 2–3 weeks | ElGamal, Chaum-Pedersen ZKPs, Pedersen DKG, RSA blind signatures — all from first principles, `#[no_std]`-compatible, zero external crates |
 | M3 | Ballot Encoding & Encryption | `/packages/crypto` | 1–2 weeks | Ballot matrix encryption, disjunctive ZKP (exactly-one-of-N), Benaloh challenge, receipt hash |
 | M4 | Bulletin Board | `/packages/bulletin-board` | 1–2 weeks | Append-only hash chain, Merkle tree, REST API (axum), mirror sync, SQLite storage (rusqlite) |

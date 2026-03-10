@@ -2,7 +2,7 @@
 
 ## Goal
 
-Establish the Rust workspace structure, define all shared types, and encode real Bulgarian 51st National Assembly election data (October 27, 2024) as structured constants. Every subsequent milestone imports from this foundation.
+Establish the Rust workspace structure with a clean separation between the crypto crate (pure cryptographic primitives, `#[no_std]`, zero deps) and a shared library crate (election domain types + embedded ballot data). Real Bulgarian 51st National Assembly election data (October 27, 2024) is stored as TOML files and compiled into the shared crate with a SHA-256 integrity digest for anti-tampering.
 
 ## Prerequisites
 
@@ -20,30 +20,67 @@ flake.lock                  # Auto-generated: locks every Nix input to exact git
 Cargo.toml                  # Workspace root (members = ["packages/*"])
 Cargo.lock                  # Auto-generated: pins all Cargo dependency versions + checksums
 
+# ── Election ballot data (serialised, human-editable) ──────────────────────
+data/elections/bg-na51-2024/
+  election.toml             # ElectionConfig (thresholds, dates, rules)
+  mirs.toml                 # All 31+1 MIRs with seat counts
+  parties.toml              # Registered parties/coalitions for 51st NA
+  candidates/
+    mir-23.toml             # Full candidate lists for demo MIR (Sofia 23)
+    mir-24.toml             # Sofia 24 (secondary demo MIR)
+    mir-25.toml             # Sofia 25 (secondary demo MIR)
+
+# ── Crypto crate (pure primitives, zero deps, #[no_std]) ──────────────────
 packages/crypto/
-  Cargo.toml                # name = "glasuvai-crypto", no external deps
+  Cargo.toml                # name = "glasuvai-crypto", zero external deps
+  src/
+    lib.rs                  # Crate root — only crypto module stubs in M1
+
+# ── Election domain crate (types + embedded ballot data) ───────────────────
+packages/election/
+  Cargo.toml                # name = "glasuvai-election", depends on serde + toml
+  build.rs                  # Computes SHA-256 digest of data/ tree at build time
   src/
     lib.rs                  # Crate root, re-exports modules
     election/
       mod.rs                # Module declarations
-      types.rs              # Core election types (MIR, Party, Candidate, Ballot spec)
-      mir.rs                # All 31+1 MIRs with seat counts
-      parties.rs            # Registered parties for 51st NA
-      candidates_mir23.rs   # Full candidate lists for demo MIR (Sofia 23)
-      candidates_mir24.rs   # Sofia 24 (secondary demo MIR)
-      candidates_mir25.rs   # Sofia 25 (secondary demo MIR)
-      config.rs             # Election parameters (thresholds, dates, rules)
-      validate.rs           # Validation functions for election data
+      types.rs              # Core election types (Mir, Party, Candidate, BallotSpec, ElectionConfig)
+      data.rs               # Embeds TOML files via include_str!, parses & exposes election data
+      validate.rs           # Validation functions (seat totals, ballot spec consistency)
+      integrity.rs          # Compile-time SHA-256 digest of embedded ballot data
 
+# ── Admin CLI ──────────────────────────────────────────────────────────────
 packages/admin/
   Cargo.toml                # name = "glasuvai-admin"
   src/
-    main.rs                 # CLI to print election data as JSON (for web client)
+    main.rs                 # CLI to validate & export election data as JSON
 ```
 
-## Workspace Structure
+## Architecture: Why Two Crates?
 
-The project uses a Cargo workspace so all packages share a single `Cargo.lock` and can depend on each other with simple path dependencies:
+```
+┌──────────────────────────────────┐     ┌──────────────────────────────────┐
+│  glasuvai-crypto                 │     │  glasuvai-election               │
+│                                  │     │                                  │
+│  #[no_std], ZERO external deps   │     │  serde + toml deps              │
+│                                  │     │                                  │
+│  • P-256 field/curve arithmetic  │     │  • Mir, Party, Candidate types   │
+│  • ElGamal encryption            │     │  • ElectionConfig, BallotSpec    │
+│  • Chaum-Pedersen ZKPs           │     │  • Embed TOML ballot data        │
+│  • Pedersen DKG                  │     │  • SHA-256 integrity digest      │
+│  • RSA blind signatures          │     │  • Validation functions          │
+│  • SHA-256                       │     │                                  │
+│                                  │     │  depends on: glasuvai-crypto     │
+│  depends on: nothing             │     │  (for hash verification)         │
+└──────────────────────────────────┘     └──────────────────────────────────┘
+         ▲                                          ▲
+         │                                          │
+         └──── used by all packages ────────────────┘
+```
+
+**Rationale**: The crypto crate stays minimal — no data, no I/O, no `serde`, no `alloc`-heavy containers. It compiles cleanly to `#[no_std]` and WASM. The election crate owns all election domain types and ballot data; it uses `serde` for deserialization and depends on `glasuvai-crypto` only for hash verification of embedded data.
+
+## Workspace Structure
 
 ```toml
 # Root Cargo.toml
@@ -51,6 +88,7 @@ The project uses a Cargo workspace so all packages share a single `Cargo.lock` a
 resolver = "2"
 members = [
     "packages/crypto",
+    "packages/election",
     "packages/crypto-wasm",
     "packages/admin",
     "packages/bulletin-board",
@@ -73,68 +111,210 @@ edition = "2021"
 [dependencies]
 # (empty)
 
-# Optional std feature; the crate is #[no_std]-compatible
 [features]
 default = ["std"]
 std = []
 ```
 
+```toml
+# packages/election/Cargo.toml
+[package]
+name = "glasuvai-election"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+glasvai-crypto = { path = "../crypto" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+# Feature flags select which election's data gets embedded.
+# Only one election should be active at a time.
+[features]
+default = ["bg-na51-2024"]
+bg-na51-2024 = []   # 51st National Assembly, Oct 2024
+# bg-na52-2025 = [] # future elections add a feature
+
+[build-dependencies]
+sha2 = "0.10"     # Used ONLY in build.rs to compute data digest
+walkdir = "2"     # Used ONLY in build.rs to enumerate data files
+```
+
+## Ballot Data Format (TOML)
+
+Real election data lives in `data/elections/bg-na51-2024/` as human-readable TOML files. These are the source of truth — editable, auditable, diffable in git.
+
+### `election.toml`
+
+```toml
+election_id = "bg-na51-2024"
+name = "Избори за 51-о Народно събрание"
+date = "2024-10-27"
+total_mirs = 32
+national_threshold = 0.04
+preference_threshold = 0.07
+total_seats = 240
+seat_allocation = "hare-niemeyer"
+```
+
+### `mirs.toml`
+
+```toml
+[[mir]]
+id = 1
+name = "Благоевград"
+name_latin = "Blagoevgrad"
+seats = 12
+
+[[mir]]
+id = 2
+name = "Бургас"
+name_latin = "Burgas"
+seats = 13
+
+# ... all 32 MIRs
+# Total seats must sum to 240
+
+[[mir]]
+id = 32
+name = "Чужбина"
+name_latin = "Abroad (Diaspora)"
+seats = 4
+```
+
+### `parties.toml`
+
+```toml
+[[party]]
+number = 1
+name = "МЕЧтА (Морал Единство Чест Алтернатива)"
+name_latin = "MEChTA"
+short = "МЕЧтА"
+coalition = true
+
+[[party]]
+number = 3
+name = "ГЕРБ-СДС"
+name_latin = "GERB-SDS"
+short = "ГЕРБ-СДС"
+coalition = true
+
+# ... all registered parties
+```
+
+### `candidates/mir-23.toml`
+
+```toml
+mir_id = 23
+
+[[party_list]]
+party_number = 3  # ГЕРБ-СДС
+
+[[party_list.candidate]]
+position = 1
+first_name = "Бойко"
+last_name = "Борисов"
+
+[[party_list.candidate]]
+position = 2
+first_name = "Даниел"
+last_name = "Митов"
+
+[[party_list.candidate]]
+position = 3
+first_name = "Деница"
+last_name = "Сачева"
+
+# ... up to 32 candidates per list
+
+[[party_list]]
+party_number = 8  # ПП-ДБ
+
+[[party_list.candidate]]
+position = 1
+first_name = "Кирил"
+last_name = "Петков"
+
+# ... all parties with candidate lists registered in MIR 23
+```
+
+> **IMPORTANT**: All party names, ballot numbers, and candidate data MUST be sourced from the official ЦИК register at `elections.bg`. The demo's credibility depends on using real data.
+
 ## Data Structures
 
-### Core Types (`packages/crypto/src/election/types.rs`)
+### Election Types (`packages/election/src/election/types.rs`)
 
 ```rust
-/// MIR represents a multi-member constituency (Многомандатен избирателен район)
-#[derive(Debug, Clone)]
-pub struct MIR {
-    pub id: u32,           // 1-31 domestic, 32 diaspora
-    pub name: &'static str,       // Bulgarian name, e.g., "Благоевград"
-    pub name_latin: &'static str, // Latin transliteration
-    pub seats: u32,        // Number of parliamentary seats allocated
+use serde::Deserialize;
+
+/// Multi-member constituency (Многомандатен избирателен район — МИР).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Mir {
+    pub id: u32,
+    pub name: String,
+    pub name_latin: String,
+    pub seats: u32,
 }
 
-/// Party represents a registered party or coalition
-#[derive(Debug, Clone)]
+/// Registered political party or electoral coalition.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Party {
-    pub number: u32,        // Ballot number (assigned by ЦИК lottery)
-    pub name: &'static str,        // Official name in Bulgarian
-    pub name_latin: &'static str,  // Latin transliteration
-    pub short: &'static str,       // Abbreviation (e.g., "ГЕРБ-СДС")
-    pub coalition: bool,    // true if coalition, false if single party
+    pub number: u32,
+    pub name: String,
+    pub name_latin: String,
+    pub short: String,
+    pub coalition: bool,
 }
 
-/// Candidate represents a candidate on a party list for a specific MIR
-#[derive(Debug, Clone)]
+/// Candidate on a party list for a specific MIR.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Candidate {
-    pub position: u32,       // Position on the party list (1-indexed)
-    pub first_name: &'static str,  // Given name in Bulgarian
-    pub last_name: &'static str,   // Family name in Bulgarian
-    pub party_num: u32,      // Reference to Party.number
-    pub mir_id: u32,         // Reference to MIR.id
+    pub position: u32,
+    pub first_name: String,
+    pub last_name: String,
 }
 
-/// BallotSpec defines the ballot structure for a specific MIR
+/// A party's candidate list within a MIR.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PartyList {
+    pub party_number: u32,
+    #[serde(rename = "candidate")]
+    pub candidates: Vec<Candidate>,
+}
+
+/// Candidate file for a single MIR.
+#[derive(Debug, Clone, Deserialize)]
+pub struct MirCandidates {
+    pub mir_id: u32,
+    #[serde(rename = "party_list")]
+    pub party_lists: Vec<PartyList>,
+}
+
+/// Complete ballot specification for a specific MIR (assembled at runtime).
 #[derive(Debug, Clone)]
 pub struct BallotSpec {
-    pub mir_id: u32,                               // Which MIR
-    pub parties: Vec<Party>,                       // Parties registered in this MIR (ordered by ballot number)
-    pub candidates: Vec<(u32, Vec<Candidate>)>,    // (party_number, ordered candidates)
-    pub max_candidates: u32,                       // Maximum candidates per list in this MIR
+    pub mir_id: u32,
+    pub parties: Vec<Party>,
+    pub candidates: Vec<PartyList>,
+    pub max_candidates: u32,
 }
 
-/// ElectionConfig holds election-wide parameters
-#[derive(Debug, Clone)]
+/// Election-wide configuration parameters.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct ElectionConfig {
-    pub election_id: &'static str,        // e.g., "bg-na51-2024"
-    pub name: &'static str,               // "Избори за 51-о Народно събрание"
-    pub date: &'static str,               // "2024-10-27"
-    pub total_mirs: u32,                   // 32
-    pub national_threshold: f64,           // 0.04 (4%)
-    pub preference_threshold: f64,         // 0.07 (7%)
-    pub total_seats: u32,                  // 240
-    pub seat_allocation: &'static str,     // "hare-niemeyer" (largest remainder)
+    pub election_id: String,
+    pub name: String,
+    pub date: String,
+    pub total_mirs: u32,
+    pub national_threshold: f64,
+    pub preference_threshold: f64,
+    pub total_seats: u32,
+    pub seat_allocation: String,
 }
 ```
+
+Note: Types use `String` (not `&'static str`) because they are deserialized from TOML at runtime. The `Deserialize` derive comes from `serde`.
 
 ## Implementation Steps
 
@@ -149,7 +329,6 @@ Before writing any Rust code, establish pinned toolchains so every build is veri
 
 ```bash
 cd /home/martin/Projects/glasuvai
-# Enter reproducible dev shell (all tools pinned)
 nix develop
 ```
 
@@ -159,182 +338,209 @@ Verification: `rustc --version` shows `1.85.0`, `node --version` shows `v22.x`, 
 
 ```bash
 cd /home/martin/Projects/glasuvai
-# Create root Cargo.toml with workspace members
-# Create packages/crypto/Cargo.toml with zero deps
-cargo init --lib packages/crypto --name glasuvai-crypto
+# Root Cargo.toml already exists (workspace members)
+# packages/crypto already exists (skeleton)
+cargo init --lib packages/election --name glasuvai-election
 # Commit Cargo.lock to git (mandatory for reproducible builds)
 ```
 
-### Step 2: Define Election Types
+### Step 2: Create Ballot Data Files
 
-Create `election/types.rs` with the types above. Keep types simple — just data structures. Derive `Debug` and `Clone` for all types.
+Populate `data/elections/bg-na51-2024/` with TOML files containing real election data sourced from the official ЦИК register. Files:
 
-### Step 3: Encode MIR Data (Real)
+- `election.toml` — election-wide config
+- `mirs.toml` — all 32 MIRs
+- `parties.toml` — all registered parties
+- `candidates/mir-23.toml` — full candidate lists for MIR 23 (primary demo)
+- `candidates/mir-24.toml` — MIR 24 (secondary)
+- `candidates/mir-25.toml` — MIR 25 (secondary)
 
-Create `election/mir.rs` with all 32 MIRs from the 51st National Assembly:
+### Step 3: Define Election Types in Election Crate
 
-```rust
-use super::types::MIR;
+Create `packages/election/src/election/types.rs` with the types above. All types derive `Debug`, `Clone`, and `serde::Deserialize`.
 
-/// All 32 multi-member constituencies for the 51st National Assembly
-pub const MIRS: &[MIR] = &[
-    MIR { id: 1, name: "Благоевград", name_latin: "Blagoevgrad", seats: 12 },
-    MIR { id: 2, name: "Бургас", name_latin: "Burgas", seats: 13 },
-    MIR { id: 3, name: "Варна", name_latin: "Varna", seats: 14 },
-    MIR { id: 4, name: "Велико Търново", name_latin: "Veliko Tarnovo", seats: 8 },
-    MIR { id: 5, name: "Видин", name_latin: "Vidin", seats: 4 },
-    MIR { id: 6, name: "Враца", name_latin: "Vratsa", seats: 6 },
-    MIR { id: 7, name: "Габрово", name_latin: "Gabrovo", seats: 4 },
-    MIR { id: 8, name: "Добрич", name_latin: "Dobrich", seats: 6 },
-    MIR { id: 9, name: "Кърджали", name_latin: "Kardzhali", seats: 5 },
-    MIR { id: 10, name: "Кюстендил", name_latin: "Kyustendil", seats: 5 },
-    MIR { id: 11, name: "Ловеч", name_latin: "Lovech", seats: 5 },
-    MIR { id: 12, name: "Монтана", name_latin: "Montana", seats: 5 },
-    MIR { id: 13, name: "Пазарджик", name_latin: "Pazardzhik", seats: 9 },
-    MIR { id: 14, name: "Перник", name_latin: "Pernik", seats: 5 },
-    MIR { id: 15, name: "Плевен", name_latin: "Pleven", seats: 9 },
-    MIR { id: 16, name: "Пловдив-град", name_latin: "Plovdiv City", seats: 12 },
-    MIR { id: 17, name: "Пловдив-област", name_latin: "Plovdiv Region", seats: 7 },
-    MIR { id: 18, name: "Разград", name_latin: "Razgrad", seats: 4 },
-    MIR { id: 19, name: "Русе", name_latin: "Ruse", seats: 8 },
-    MIR { id: 20, name: "Силистра", name_latin: "Silistra", seats: 4 },
-    MIR { id: 21, name: "Сливен", name_latin: "Sliven", seats: 6 },
-    MIR { id: 22, name: "Смолян", name_latin: "Smolyan", seats: 4 },
-    MIR { id: 23, name: "София 23", name_latin: "Sofia 23", seats: 16 },
-    MIR { id: 24, name: "София 24", name_latin: "Sofia 24", seats: 16 },
-    MIR { id: 25, name: "София 25", name_latin: "Sofia 25", seats: 16 },
-    MIR { id: 26, name: "Софийска област", name_latin: "Sofia Region", seats: 8 },
-    MIR { id: 27, name: "Стара Загора", name_latin: "Stara Zagora", seats: 11 },
-    MIR { id: 28, name: "Търговище", name_latin: "Targovishte", seats: 4 },
-    MIR { id: 29, name: "Хасково", name_latin: "Haskovo", seats: 8 },
-    MIR { id: 30, name: "Шумен", name_latin: "Shumen", seats: 6 },
-    MIR { id: 31, name: "Ямбол", name_latin: "Yambol", seats: 5 },
-    MIR { id: 32, name: "Чужбина", name_latin: "Abroad (Diaspora)", seats: 4 },
-];
-// Total: 240 seats
-```
+### Step 4: Embed and Parse Ballot Data
 
-### Step 4: Encode Party Data (Real — 51st NA)
-
-Create `election/parties.rs` with parties that participated in the 51st NA elections:
+Create `packages/election/src/election/data.rs`:
 
 ```rust
-use super::types::Party;
+use super::types::*;
 
-/// Parties/coalitions registered for the 51st National Assembly elections
-/// Ballot numbers assigned by ЦИК lottery draw
-pub const PARTIES_51NA: &[Party] = &[
-    Party { number: 1, name: "МЕЧтА (Морал Единство Чест Алтернатива)", name_latin: "MEChTA", short: "МЕЧтА", coalition: true },
-    Party { number: 2, name: "АЛТЕРНАТИВА ЗА БЪЛГАРСКО ВЪЗРАЖДАНЕ", name_latin: "ABV", short: "АБВ", coalition: false },
-    Party { number: 3, name: "ГЕРБ-СДС", name_latin: "GERB-SDS", short: "ГЕРБ-СДС", coalition: true },
-    Party { number: 4, name: "ДВИЖЕНИЕ ЗА ПРАВА И СВОБОДИ – НОВО НАЧАЛО", name_latin: "DPS-New Beginning", short: "ДПС-НН", coalition: false },
-    Party { number: 5, name: "БСП – ОБЕДИНЕНА ЛЕВИЦА", name_latin: "BSP-United Left", short: "БСП-ОЛ", coalition: true },
-    Party { number: 6, name: "ИМА ТАКЪВ НАРОД", name_latin: "ITN", short: "ИТН", coalition: false },
-    Party { number: 7, name: "ВЕЛИЧИЕ", name_latin: "Velichie", short: "ВЕЛИЧИЕ", coalition: false },
-    Party { number: 8, name: "ПРОДЪЛЖАВАМЕ ПРОМЯНАТА – ДЕМОКРАТИЧНА БЪЛГАРИЯ", name_latin: "PP-DB", short: "ПП-ДБ", coalition: true },
-    Party { number: 9, name: "ВЪЗРАЖДАНЕ", name_latin: "Vazrazhdane", short: "ВЪЗРАЖДАНЕ", coalition: false },
-    Party { number: 10, name: "СИНЯ БЪЛГАРИЯ", name_latin: "Blue Bulgaria", short: "СБ", coalition: false },
-    Party { number: 11, name: "БЪЛГАРСКИ НАЦИОНАЛЕН СЪЮЗ – НД", name_latin: "BNS-ND", short: "БНС-НД", coalition: false },
-    Party { number: 12, name: "ЛЕВИЦАТА!", name_latin: "The Left!", short: "ЛЕВИЦАТА!", coalition: false },
-    Party { number: 13, name: "ПОЛИТИЧЕСКО ДВИЖЕНИЕ СОЦИАЛДЕМОКРАТИ", name_latin: "Political Movement Social Democrats", short: "ПДСД", coalition: false },
-    Party { number: 14, name: "ДВИЖЕНИЕ ЗА ПРАВА И СВОБОДИ", name_latin: "DPS", short: "ДПС", coalition: false },
-];
-```
+// Embed TOML files at compile time, gated by feature flag.
+// The active feature determines which election's data is compiled in.
+// Any change to these files triggers a recompile.
 
-> **Note**: Exact ballot numbers and the full list of registered parties should be cross-referenced with the official ЦИК register at `elections.bg`. The above is representative of the major parties. The demo must include all parties registered in the demo MIR.
+#[cfg(feature = "bg-na51-2024")]
+mod embedded {
+    pub const ELECTION_TOML: &str = include_str!("../../../data/elections/bg-na51-2024/election.toml");
+    pub const MIRS_TOML: &str = include_str!("../../../data/elections/bg-na51-2024/mirs.toml");
+    pub const PARTIES_TOML: &str = include_str!("../../../data/elections/bg-na51-2024/parties.toml");
+    pub const MIR23_TOML: &str = include_str!("../../../data/elections/bg-na51-2024/candidates/mir-23.toml");
+    // ... additional MIRs as needed
+}
+use embedded::*;
 
-### Step 5: Encode Candidate Data for Demo MIR
+/// SHA-256 hex digest of all embedded data files, computed at build time.
+/// Used for anti-tampering verification — the verifier and bulletin board
+/// can confirm that the election data matches the published digest.
+pub const DATA_INTEGRITY_DIGEST: &str = env!("GLASUVAI_DATA_SHA256");
 
-Create `election/candidates_mir23.rs` with candidate lists for MIR 23 (Sofia 23).
+/// Parse the embedded election configuration.
+pub fn election_config() -> ElectionConfig {
+    toml::from_str(ELECTION_TOML).expect("embedded election.toml is valid")
+}
 
-Each party that registered in this MIR submits a candidate list of up to N candidates (N ≤ 2× seat count, so up to 32 for a 16-seat MIR):
+/// Parse the embedded MIR table.
+pub fn mirs() -> Vec<Mir> {
+    #[derive(Deserialize)]
+    struct MirFile { mir: Vec<Mir> }
+    let f: MirFile = toml::from_str(MIRS_TOML).expect("embedded mirs.toml is valid");
+    f.mir
+}
 
-```rust
-use super::types::Candidate;
+/// Parse the embedded party table.
+pub fn parties() -> Vec<Party> {
+    #[derive(Deserialize)]
+    struct PartyFile { party: Vec<Party> }
+    let f: PartyFile = toml::from_str(PARTIES_TOML).expect("embedded parties.toml is valid");
+    f.party
+}
 
-/// Candidate lists for MIR 23 (Sofia 23) for the 51st National Assembly elections.
-///
-/// Data source: ЦИК official register (elections.bg)
-/// Each tuple is (party_number, candidates).
-pub fn candidates_mir23() -> Vec<(u32, Vec<Candidate>)> {
-    vec![
-        (3, vec![ // ГЕРБ-СДС
-            Candidate { position: 1, first_name: "Бойко", last_name: "Борисов", party_num: 3, mir_id: 23 },
-            Candidate { position: 2, first_name: "Даниел", last_name: "Митов", party_num: 3, mir_id: 23 },
-            Candidate { position: 3, first_name: "Деница", last_name: "Сачева", party_num: 3, mir_id: 23 },
-            // ... up to 32 candidates per list
-            // Full list to be populated from ЦИК data
-        ]),
-        (8, vec![ // ПП-ДБ
-            Candidate { position: 1, first_name: "Кирил", last_name: "Петков", party_num: 8, mir_id: 23 },
-            Candidate { position: 2, first_name: "Асен", last_name: "Василев", party_num: 8, mir_id: 23 },
-            Candidate { position: 3, first_name: "Христо", last_name: "Иванов", party_num: 8, mir_id: 23 },
-            // ... full list
-        ]),
-        (9, vec![ // Възраждане
-            Candidate { position: 1, first_name: "Костадин", last_name: "Костадинов", party_num: 9, mir_id: 23 },
-            // ... full list
-        ]),
-        (4, vec![ // ДПС-НН
-            Candidate { position: 1, first_name: "Делян", last_name: "Пеевски", party_num: 4, mir_id: 23 },
-            // ... full list
-        ]),
-        (5, vec![ // БСП-ОЛ
-            Candidate { position: 1, first_name: "Корнелия", last_name: "Нинова", party_num: 5, mir_id: 23 },
-            // ... full list
-        ]),
-        // ... all registered parties in MIR 23
-    ]
+/// Parse the embedded candidate data for MIR 23.
+pub fn candidates_mir23() -> MirCandidates {
+    toml::from_str(MIR23_TOML).expect("embedded mir-23.toml is valid")
+}
+
+/// Build a complete BallotSpec for a MIR by combining party + candidate data.
+pub fn ballot_spec(mir_id: u32) -> BallotSpec {
+    let all_parties = parties();
+    let mir_candidates = match mir_id {
+        23 => candidates_mir23(),
+        _ => panic!("candidate data not available for MIR {mir_id}"),
+    };
+    let registered_party_nums: Vec<u32> = mir_candidates.party_lists
+        .iter().map(|pl| pl.party_number).collect();
+    let mir_parties: Vec<Party> = all_parties.into_iter()
+        .filter(|p| registered_party_nums.contains(&p.number))
+        .collect();
+    let max_candidates = mir_candidates.party_lists
+        .iter().map(|pl| pl.candidates.len() as u32).max().unwrap_or(0);
+    BallotSpec {
+        mir_id,
+        parties: mir_parties,
+        candidates: mir_candidates.party_lists,
+        max_candidates,
+    }
 }
 ```
 
-> **IMPORTANT**: The candidate data above uses list leaders as known from public sources. Full candidate lists (all positions) MUST be sourced from the official ЦИК register for authenticity. The demo's credibility depends on using real data.
+### Step 5: Build Script for Integrity Digest
 
-### Step 6: Election Configuration
-
-Create `election/config.rs`:
+Create `packages/election/build.rs`:
 
 ```rust
-use super::types::ElectionConfig;
+//! Build script: computes a SHA-256 digest over all ballot data files
+//! and exposes it as the `GLASUVAI_DATA_SHA256` environment variable
+//! (accessible via `env!()` in the crate source).
 
-/// Election configuration for the 51st National Assembly
-pub const CONFIG_51NA: ElectionConfig = ElectionConfig {
-    election_id: "bg-na51-2024",
-    name: "Избори за 51-о Народно събрание",
-    date: "2024-10-27",
-    total_mirs: 32,
-    national_threshold: 0.04,
-    preference_threshold: 0.07,
-    total_seats: 240,
-    seat_allocation: "hare-niemeyer",
-};
+use sha2::{Sha256, Digest};
+use walkdir::WalkDir;
+use std::fs;
+
+fn main() {
+    let data_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/elections");
+    println!("cargo::rerun-if-changed={data_dir}");
+
+    let mut hasher = Sha256::new();
+    let mut paths: Vec<_> = WalkDir::new(data_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|e| e.into_path())
+        .collect();
+
+    // Sort for deterministic ordering across platforms
+    paths.sort();
+
+    for path in &paths {
+        let content = fs::read(path).expect("failed to read data file");
+        hasher.update(&content);
+    }
+
+    let digest = format!("{:x}", hasher.finalize());
+    println!("cargo::rustc-env=GLASUVAI_DATA_SHA256={digest}");
+}
 ```
 
-### Step 7: Validation Functions
+Any change to any file under `data/elections/` triggers a rebuild and a new digest. The verifier tool (M7) and bulletin board can compare this digest against the published one.
 
-Create `election/validate.rs` with functions to check data consistency:
+### Step 6: Validation Functions
+
+Create `packages/election/src/election/validate.rs`:
 
 ```rust
-use super::types::{BallotSpec, MIR};
+use super::types::{BallotSpec, Mir};
 
-/// Checks that a BallotSpec is internally consistent
-pub fn validate_ballot_spec(spec: &BallotSpec) -> Result<(), String> {
-    // - Every candidate references a party in the spec
-    // - Candidate positions are sequential (1, 2, 3, ...)
-    // - No duplicate party numbers
-    // - mir_id matches across all entries
-    // - At least one party registered
-    Ok(())
-}
-
-/// Checks that total seats across all MIRs = 240
-pub fn validate_mir_seats(mirs: &[MIR]) -> Result<(), String> {
+/// Checks that total seats across all MIRs equals the expected 240.
+pub fn validate_mir_seats(mirs: &[Mir], expected: u32) -> Result<(), String> {
     let total: u32 = mirs.iter().map(|m| m.seats).sum();
-    if total != 240 {
-        return Err(format!("expected 240 total seats, got {}", total));
+    if total != expected {
+        return Err(format!("expected {expected} total seats, got {total}"));
     }
     Ok(())
 }
+
+/// Checks that a BallotSpec is internally consistent.
+pub fn validate_ballot_spec(spec: &BallotSpec) -> Result<(), String> {
+    if spec.parties.is_empty() {
+        return Err("no parties registered".into());
+    }
+    // Every party list references a party present in spec.parties
+    for pl in &spec.candidates {
+        if !spec.parties.iter().any(|p| p.number == pl.party_number) {
+            return Err(format!("party list references unknown party {}", pl.party_number));
+        }
+        // Positions must be sequential 1..=N
+        for (i, c) in pl.candidates.iter().enumerate() {
+            if c.position != (i as u32 + 1) {
+                return Err(format!(
+                    "party {} candidate at index {} has position {} (expected {})",
+                    pl.party_number, i, c.position, i + 1
+                ));
+            }
+        }
+    }
+    // No duplicate party numbers
+    let mut seen = std::collections::HashSet::new();
+    for pl in &spec.candidates {
+        if !seen.insert(pl.party_number) {
+            return Err(format!("duplicate party list for party {}", pl.party_number));
+        }
+    }
+    Ok(())
+}
+```
+
+### Step 7: Clean Up Crypto Crate
+
+Remove the `election` module from `packages/crypto`. In M1 the crypto crate is a skeleton — its only job is to exist with zero deps and compile under `#[no_std]`. Crypto primitives (P-256, ElGamal, ZKPs, SHA-256) are implemented in M2.
+
+```rust
+// packages/crypto/src/lib.rs
+#![cfg_attr(not(feature = "std"), no_std)]
+
+//! `glasuvai-crypto` — cryptographic primitives from first principles.
+//!
+//! This crate has **zero external dependencies**. Every algorithm is
+//! implemented from first principles, traceable to its textbook definition.
+//!
+//! Primitives (added in M2):
+//! - P-256 (secp256r1) field & curve arithmetic
+//! - ElGamal encryption (homomorphic)
+//! - Chaum-Pedersen ZKPs
+//! - Pedersen DKG
+//! - RSA blind signatures
+//! - SHA-256
 ```
 
 ### Step 8: Admin CLI for Data Export
@@ -349,24 +555,43 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-glasuvai-crypto = { path = "../crypto" }
-serde = { version = "1", features = ["derive"] }
+glasuvai-election = { path = "../election" }
 serde_json = "1"
 ```
 
 ```rust
 // packages/admin/src/main.rs
-// CLI to export election data as JSON (for web client and testing)
+use glasuvai_election::election::{data, validate};
+
 fn main() {
-    // Parse args: --mir 23 --format json
-    // Read election data from glasuvai-crypto
-    // Validate data
-    // Output JSON
+    let config = data::election_config();
+    let mirs = data::mirs();
+    let parties = data::parties();
+
+    // Validate
+    validate::validate_mir_seats(&mirs, config.total_seats)
+        .expect("MIR seat validation failed");
+
+    println!("Election: {} ({})", config.name, config.date);
+    println!("Data integrity: {}", data::DATA_INTEGRITY_DIGEST);
+    println!("MIRs: {}, Parties: {}", mirs.len(), parties.len());
+
+    // --mir 23 → export ballot spec as JSON
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(mir_arg) = args.iter().position(|a| a == "--mir") {
+        let mir_id: u32 = args[mir_arg + 1].parse().expect("invalid MIR number");
+        let spec = data::ballot_spec(mir_id);
+        validate::validate_ballot_spec(&spec)
+            .expect("ballot spec validation failed");
+        let json = serde_json::to_string_pretty(&spec)
+            .expect("JSON serialisation failed");
+        println!("{json}");
+    }
 }
 ```
 
 ```bash
-cargo run -p glasuvai-admin -- --mir 23 --format json > test/data/mir23.json
+cargo run -p glasuvai-admin -- --mir 23
 ```
 
 ## Acceptance Criteria
@@ -374,12 +599,15 @@ cargo run -p glasuvai-admin -- --mir 23 --format json > test/data/mir23.json
 - [ ] `nix develop` enters shell with correct pinned toolchain versions
 - [ ] `rustc --version` inside dev shell shows `1.85.0`
 - [ ] `flake.lock` exists and pins all inputs to exact commit hashes
-- [ ] `cargo build -p glasuvai-crypto` succeeds with zero warnings
-- [ ] `cargo test -p glasuvai-crypto` passes all tests
-- [ ] `validate_mir_seats` confirms exactly 240 total seats
-- [ ] `validate_ballot_spec` passes for MIR 23 demo data
-- [ ] Admin CLI exports valid JSON for MIR 23
-- [ ] All party names and candidate data match ЦИК official records
+- [ ] `cargo build -p glasuvai-crypto` succeeds with zero warnings and zero external deps
 - [ ] `cargo tree -p glasuvai-crypto` shows zero external dependencies
 - [ ] Crypto crate compiles with `#[no_std]` (verified via feature flag)
+- [ ] `cargo build -p glasuvai-election` succeeds — TOML files parse correctly
+- [ ] `cargo test -p glasuvai-election` passes all validation tests
+- [ ] `validate_mir_seats` confirms exactly 240 total seats
+- [ ] `validate_ballot_spec` passes for MIR 23 demo data
+- [ ] `DATA_INTEGRITY_DIGEST` is a stable SHA-256 hex string that changes only when data files change
+- [ ] Admin CLI exports valid JSON for MIR 23
+- [ ] All party names and candidate data match ЦИК official records
+- [ ] TOML data files are valid, human-readable, and diffable in git
 - [ ] `Cargo.lock` is committed to git

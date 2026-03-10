@@ -43,6 +43,7 @@
             # Rust tooling
             cargo-audit    # Dependency vulnerability scanner
             cargo-deny     # License and advisory checker
+            rust-analyzer  # Rust LSP
             wasm-pack      # Build Rust → WASM packages
 
             # Node.js for web client (pinned LTS)

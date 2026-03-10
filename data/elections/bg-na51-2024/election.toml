@@ -1,0 +1,8 @@
+election_id = "bg-na51-2024"
+name = "Избори за 51-о Народно събрание"
+date = "2024-10-27"
+total_mirs = 31
+national_threshold = 0.04
+preference_threshold = 0.07
+total_seats = 240
+seat_allocation = "hare-niemeyer"

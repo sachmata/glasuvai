@@ -1,0 +1,204 @@
+# Registered parties and coalitions for the 51st National Assembly elections.
+# Ballot numbers assigned by ЦИК lottery on 30 September 2024.
+# Source: https://www.dw.com/bg/eto-nomerata-na-partiite-i-koaliciite-v-buletinata-za-izborite-na-27-oktomvri/a-70323854
+# and https://results.cik.bg/pe202410/rezultati/index.html
+#
+# Note: Party 28 (БСП - обединена левица) was initially omitted but is now
+# included. All 28 ballot numbers are represented.
+# "Не подкрепям никого" is not a party — it is a ballot option.
+
+[[party]]
+number = 1
+name = "ДОСТ"
+name_latin = "DOST"
+short = "ДОСТ"
+coalition = false
+
+[[party]]
+number = 2
+name = "Глас народен"
+name_latin = "Glas Naroden"
+short = "ГН"
+coalition = false
+
+[[party]]
+number = 3
+name = "Социалистическа партия Български път"
+name_latin = "Socialist Party Bulgarian Path"
+short = "СПБП"
+coalition = false
+
+[[party]]
+number = 4
+name = "Величие"
+name_latin = "Velichie"
+short = "Величие"
+coalition = false
+
+[[party]]
+number = 5
+name = "Булгари"
+name_latin = "Bulgari"
+short = "Булгари"
+coalition = false
+
+[[party]]
+number = 6
+name = "Моя страна България"
+name_latin = "Moya Strana Bulgaria"
+short = "МСБ"
+coalition = true
+
+[[party]]
+number = 7
+name = "Има такъв народ"
+name_latin = "ITN"
+short = "ИТН"
+coalition = false
+
+[[party]]
+number = 8
+name = "ДПС - Ново начало"
+name_latin = "DPS - New Beginning"
+short = "ДПС-НН"
+coalition = true
+
+[[party]]
+number = 9
+name = "Бригада"
+name_latin = "Brigada"
+short = "Бригада"
+coalition = false
+
+[[party]]
+number = 10
+name = "Партия на зелените"
+name_latin = "Party of the Greens"
+short = "ПЗ"
+coalition = false
+
+[[party]]
+number = 11
+name = "Правото"
+name_latin = "Pravoto"
+short = "Правото"
+coalition = false
+
+[[party]]
+number = 12
+name = "Възраждане"
+name_latin = "Vazrazhdane"
+short = "Възраждане"
+coalition = false
+
+[[party]]
+number = 13
+name = "Алианс за права и свободи - АПС"
+name_latin = "Alliance for Rights and Freedoms - APS"
+short = "АПС"
+coalition = true
+
+[[party]]
+number = 14
+name = "Български национален съюз - Нова демокрация"
+name_latin = "Bulgarian National Union - New Democracy"
+short = "БНС-НД"
+coalition = false
+
+[[party]]
+number = 15
+name = "Български съюз за директна демокрация"
+name_latin = "BSDD"
+short = "БСДД"
+coalition = false
+
+[[party]]
+number = 16
+name = "Синя България"
+name_latin = "Blue Bulgaria"
+short = "СБ"
+coalition = true
+
+[[party]]
+number = 17
+name = "МЕЧ"
+name_latin = "MECh"
+short = "МЕЧ"
+coalition = false
+
+[[party]]
+number = 18
+name = "ГЕРБ-СДС"
+name_latin = "GERB-SDS"
+short = "ГЕРБ-СДС"
+coalition = true
+
+[[party]]
+number = 19
+name = "Атака"
+name_latin = "Ataka"
+short = "Атака"
+coalition = false
+
+[[party]]
+number = 20
+name = "Народна партия Истината и само истината"
+name_latin = "People's Party The Truth and Only the Truth"
+short = "НПИИ"
+coalition = false
+
+[[party]]
+number = 21
+name = "Пряка демокрация"
+name_latin = "Direct Democracy"
+short = "ПД"
+coalition = false
+
+[[party]]
+number = 22
+name = "Свободни избиратели (РБ, ССД и ЗС)"
+name_latin = "Free Voters (RB, SSD and ZS)"
+short = "СИ"
+coalition = true
+
+[[party]]
+number = 23
+name = "България на труда и разума"
+name_latin = "BTR"
+short = "БТР"
+coalition = false
+
+[[party]]
+number = 24
+name = "КОЙ"
+name_latin = "KOI"
+short = "КОЙ"
+coalition = false
+
+[[party]]
+number = 25
+name = "Русофили за България"
+name_latin = "Russophiles for Bulgaria"
+short = "РзБ"
+coalition = true
+
+[[party]]
+number = 26
+name = "Продължаваме промяната - Демократична България"
+name_latin = "PP-DB"
+short = "ПП-ДБ"
+coalition = true
+
+[[party]]
+number = 27
+name = "Български възход"
+name_latin = "Bulgarian Rise"
+short = "БВ"
+coalition = false
+
+[[party]]
+number = 28
+name = "БСП - обединена левица"
+name_latin = "BSP - United Left"
+short = "БСП-ОЛ"
+coalition = true
